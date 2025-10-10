@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  hexlet-project:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5432
+      - DB_USER=valie
+      - DB_PASSWORD=245524
+      - DB_NAME=avtopostingdb
+      - DB_SSLMODE=disable
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: valie
+      POSTGRES_PASSWORD: 245524
+      POSTGRES_DB: avtopostingdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge
