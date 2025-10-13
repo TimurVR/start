@@ -6,10 +6,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DB_HOST=host.docker.internal
+      - DB_HOST=postgres 
       - DB_PORT=5432
-      - DB_USER=valie
-      - DB_PASSWORD=245524
+      - DB_USER=postgres
+      - DB_PASSWORD=2455
       - DB_NAME=avtopostingdb
       - DB_SSLMODE=disable
     depends_on:
@@ -20,9 +20,9 @@ services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: valie
-      POSTGRES_PASSWORD: 245524
-      POSTGRES_DB: avtopostingdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=2455
+      - POSTGRES_DB=avtopostingdb
     ports:
       - "5432:5432"
     volumes:
