@@ -119,13 +119,3 @@ func getEnv(key, defaultValue string) string {
 	}
 	return defaultValue
 }
-
-/*
-# Полная остановка и удаление volumes
-docker-compose down -v
-
-# Перезапуск
-docker-compose up -d --build
-
-# Проверим логи
-docker-compose logs -f hexlet-project*/
