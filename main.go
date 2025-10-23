@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"hexlet/Internal/repository"
+	"hexlet/internal/app"
+	"hexlet/internal/repository"
 	"log"
 	"os"
 
@@ -24,7 +25,7 @@ func main() {
 		log.Fatalf("failed to init DB connection: %v", err)
 	}
 	defer dbpool.Close()
-	a := repository.NewApp(ctx, dbpool)
+	a := app.NewApp(ctx, dbpool)
 	a.Routes(r)
 	err = r.Run(":8080")
 	if err != nil {
