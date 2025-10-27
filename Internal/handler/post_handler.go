@@ -12,7 +12,7 @@ import (
 
 type App struct {
 	Ctx  context.Context
-	Repo *repository.Repository
+	Repo repository.PostRepository
 }
 
 func (a *App) Routes(r *gin.Engine) {

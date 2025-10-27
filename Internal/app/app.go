@@ -9,9 +9,9 @@ import (
 )
 
 func NewApp(ctx context.Context, dbpool *pgxpool.Pool) *handler.App {
-	return &handler.App{ctx, NewRepository(dbpool)}
-}
-
-func NewRepository(pool *pgxpool.Pool) *repository.Repository {
-	return &repository.Repository{Pool: pool}
+	repo := repository.NewRepository(dbpool)
+	return &handler.App{
+		Ctx:  ctx,
+		Repo: repo,
+	}
 }

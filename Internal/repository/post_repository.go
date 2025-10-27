@@ -10,8 +10,16 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+type PostRepository interface {
+	CreatePostDB(ctx context.Context, post dto.CreatePostRequest) (int, time.Time, error)
+	GetPostDB(ctx context.Context) (dto.GetPostResponce, error)
+}
 type Repository struct {
 	Pool *pgxpool.Pool
+}
+
+func NewRepository(pool *pgxpool.Pool) *Repository {
+	return &Repository{Pool: pool}
 }
 
 func (r *Repository) CreatePostDB(ctx context.Context, post dto.CreatePostRequest) (int, time.Time, error) {

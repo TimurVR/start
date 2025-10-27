@@ -14,7 +14,6 @@ import (
 func main() {
 	r := gin.Default()
 	ctx := context.Background()
-	_ = ctx
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
