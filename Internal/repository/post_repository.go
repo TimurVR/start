@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"fmt"
-	"hexlet/internal/domain"
-	"hexlet/internal/dto"
+	"hexlet/Internal/domain"
+	"hexlet/Internal/dto"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"

@@ -2,8 +2,8 @@ package handler
 
 import (
 	"context"
-	"hexlet/internal/dto"
-	"hexlet/internal/repository"
+	"hexlet/Internal/dto"
+	"hexlet/Internal/repository"
 	"net/http"
 
 	"github.com/gin-gonic/gin"

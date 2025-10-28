@@ -2,8 +2,8 @@ package app
 
 import (
 	"context"
-	"hexlet/internal/handler"
-	"hexlet/internal/repository"
+	"hexlet/Internal/handler"
+	"hexlet/Internal/repository"
 
 	"github.com/jackc/pgx/v4/pgxpool"
 )

@@ -1,14 +1,14 @@
-package tests
+package handler_test
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"hexlet/internal/domain"
-	"hexlet/internal/dto"
-	"hexlet/internal/handler"
-	"hexlet/internal/repository"
+	"hexlet/Internal/domain"
+	"hexlet/Internal/dto"
+	"hexlet/Internal/handler"
+	"hexlet/Internal/repository"
 	"net/http"
 	"net/http/httptest"
 	"strings"

@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"hexlet/internal/domain"
+	"hexlet/Internal/domain"
 	"time"
 )
 

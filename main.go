@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"hexlet/internal/app"
-	"hexlet/internal/repository"
+	"hexlet/Internal/app"
+	storage "hexlet/Internal/storage"
 	"log"
 	"os"
 
@@ -19,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Println("Working directory:", wd)
-	dbpool, err := repository.InitDBConn(ctx)
+	dbpool, err := storage.InitDBConn(ctx)
 	if err != nil {
 		log.Fatalf("failed to init DB connection: %v", err)
 	}
@@ -31,3 +31,10 @@ func main() {
 		log.Fatal(err)
 	}
 }
+/*        hexlet/Internal/app             coverage: 0.0% of statements
+?       hexlet/Internal/domain  [no test files]
+?       hexlet/Internal/dto     [no test files]
+ok      hexlet/Internal/handler 0.305s  coverage: 84.0% of statements
+ok      hexlet/Internal/repository      16.749s coverage: 85.7% of statements
+?       hexlet/Internal/service [no test files]
+        hexlet/Internal/storage         coverage: 0.0% of statements*/
