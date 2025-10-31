@@ -66,6 +66,7 @@ func setupTestDB(t *testing.T) (*repository.Repository, context.Context) {
             testDBContainer.Terminate(testDBCtx)
             return
         }
+        
         _, testDBErr = testDBPool.Exec(testDBCtx, `
             CREATE TABLE IF NOT EXISTS posts (
                 id SERIAL PRIMARY KEY,
@@ -105,6 +106,7 @@ func cleanupTestDB() {
 
 func TestMain(m *testing.M) {
     code := m.Run()
+    
     cleanupTestDB()
     if code != 0 {
         panic("tests failed")
