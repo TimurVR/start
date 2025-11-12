@@ -7,13 +7,13 @@ import (
 	storage "hexlet/Internal/storage"
 	"log"
 	"os"
-
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
 	ctx := context.Background()
+	
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
@@ -25,6 +25,8 @@ func main() {
 	}
 	defer dbpool.Close()
 	a := app.NewApp(ctx, dbpool)
+	a.StartScheduler()
+	log.Println("Kafka scheduler started")
 	a.Routes(r)
 	err = r.Run(":8080")
 	if err != nil {
