@@ -1,8 +1,9 @@
-package repository 
+package repository
 
 import (
 	"context"
 	"fmt"
+	"hexlet/Internal/config"
 	"log"
 	"net"
 	"os"
@@ -20,8 +21,8 @@ type DBConfig struct {
 	SSLMode  string
 }
 
-func InitDBConn(ctx context.Context) (dbpool *pgxpool.Pool, err error) {
-	config := loadDBConfig()
+func InitDBConn(ctx context.Context, cfgenv *config.Config) (dbpool *pgxpool.Pool, err error) {
+	config := loadDBConfig(cfgenv)
 	if err := waitForDB(ctx, config); err != nil {
 		return nil, fmt.Errorf("failed to wait for database: %v", err)
 	}
@@ -102,13 +103,13 @@ func waitForDB(ctx context.Context, config DBConfig) error {
 	return fmt.Errorf("database not ready after 30 attempts")
 }
 
-func loadDBConfig() DBConfig {
+func loadDBConfig(cfgenv *config.Config) DBConfig {
 	return DBConfig{
 		Host:     getEnv("DB_HOST", "postgres"),
 		Port:     getEnv("DB_PORT", "5432"),
-		User:     getEnv("DB_USER", "postgres"),
-		Password: getEnv("DB_PASSWORD", "2455"),
-		DBName:   getEnv("DB_NAME", "avtopostingdb"),
+		User:     getEnv("DB_USER", cfgenv.DBUser),
+		Password: getEnv("DB_PASSWORD", cfgenv.DBPassword),
+		DBName:   getEnv("DB_NAME", cfgenv.DBName),
 		SSLMode:  getEnv("DB_SSLMODE", "disable"),
 	}
 }

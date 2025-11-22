@@ -30,7 +30,7 @@ CREATE TABLE post_destinations (
     platform_id INTEGER NOT NULL,
     scheduled_for TIMESTAMP WITH TIME ZONE,
     published_at TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'published', 'failed')),
+    status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'published', 'failed','processing','received_for_publication')),
     error_message TEXT, 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     

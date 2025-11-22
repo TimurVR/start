@@ -7,8 +7,9 @@ import (
 
 	"hexlet/Internal/domain"
 )
+
 func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) ([]domain.ScheduledPublication, error) {
-	   query := `
+	query := `
         SELECT 
             pd.id as id_destination,
             pd.post_id as id_post,
@@ -47,6 +48,16 @@ func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) 
 			&pub.Platform_name,
 			&pub.Scheduled_for,
 		)
+		query := `
+		UPDATE post_destinations 
+		SET
+			status= "processing"
+		WHERE id = $1 
+	`
+		_, err1 := r.Pool.Exec(ctx, query, pub.ID_destination)
+		if err1 != nil {
+			return nil, fmt.Errorf("failed to mark as sent to kafka: %w", err)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan publication: %w", err)
 		}
@@ -58,15 +69,16 @@ func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) 
 func (r *Repository) MarkAsSentToKafkaInTx(ctx context.Context, destinationID int) error {
 	query := `
 		UPDATE post_destinations 
-		SET kafka_event_sent = true, 
+		SET kafka_event_sent = true,
+			status= "received_for_publication",
 			kafka_sent_at = $1
 		WHERE id = $2
 	`
-	
+
 	_, err := r.Pool.Exec(ctx, query, time.Now(), destinationID)
 	if err != nil {
 		return fmt.Errorf("failed to mark as sent to kafka: %w", err)
 	}
-	
+
 	return nil
 }

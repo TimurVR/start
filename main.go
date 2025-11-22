@@ -4,22 +4,28 @@ import (
 	"context"
 	"fmt"
 	"hexlet/Internal/app"
+	"hexlet/Internal/config"
 	storage "hexlet/Internal/storage"
 	"log"
 	"os"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
 	ctx := context.Background()
-	
 	wd, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
+	cfg, err := config.LoadConfig()
+	
+	if err != nil {
+		log.Fatal("Cannot load config:", err)
+	}
 	fmt.Println("Working directory:", wd)
-	dbpool, err := storage.InitDBConn(ctx)
+	dbpool, err := storage.InitDBConn(ctx, cfg)
 	if err != nil {
 		log.Fatalf("failed to init DB connection: %v", err)
 	}
@@ -33,6 +39,7 @@ func main() {
 		log.Fatal(err)
 	}
 }
+
 /*        hexlet/Internal/app             coverage: 0.0% of statements
 ?       hexlet/Internal/domain  [no test files]
 ?       hexlet/Internal/dto     [no test files]

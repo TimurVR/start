@@ -13,7 +13,7 @@ import (
 )
 
 type SchedulerService struct {
-	repo     *repository.Repository
+	repo      *repository.Repository
 	kafkaProd *kafka.Producer
 	interval  time.Duration
 	batchSize int
@@ -69,6 +69,7 @@ func (s *SchedulerService) processScheduledPublications(ctx context.Context) {
 	log.Printf("Found %d scheduled publications to process", len(publications))
 
 	successfulCount := 0
+	
 	for _, pub := range publications {
 		if err := s.processPublication(ctx, pub); err != nil {
 			log.Printf("Error processing publication %d: %v", pub.ID_destination, err)
@@ -82,6 +83,8 @@ func (s *SchedulerService) processScheduledPublications(ctx context.Context) {
 
 func (s *SchedulerService) processPublication(ctx context.Context, pub domain.ScheduledPublication) error {
 	event := domain.PublicationEvent{
+		MessageID:       pub.ID_destination,
+		Timestamp:       pub.Scheduled_for,
 		ContentID:       strconv.Itoa(pub.ID_post),
 		SocialAccountID: strconv.Itoa(pub.ID_platform),
 		UserID:          strconv.Itoa(pub.ID_user),
@@ -92,7 +95,7 @@ func (s *SchedulerService) processPublication(ctx context.Context, pub domain.Sc
 	if err := s.repo.MarkAsSentToKafkaInTx(ctx, pub.ID_destination); err != nil {
 		return fmt.Errorf("failed to update publication status: %w", err)
 	}
-	log.Printf("Publication %d (Post %d -> Platform %d) sent to Kafka", 
+	log.Printf("Publication %d (Post %d -> Platform %d) sent to Kafka",
 		pub.ID_destination, pub.ID_post, pub.ID_platform)
 	return nil
 }
