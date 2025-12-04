@@ -66,11 +66,27 @@ func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) 
 
 	return publications, nil
 }
+func (r *Repository) MarkAsKafkaIsReady(ctx context.Context, destinationID int) error {
+	query := `
+		UPDATE post_destinations 
+		SET kafka_event_sent = true,
+			status= "kafka_ready",
+			kafka_sent_at = $1
+		WHERE id = $2
+	`
+
+	_, err := r.Pool.Exec(ctx, query, time.Now(), destinationID)
+	if err != nil {
+		return fmt.Errorf("failed to mark as sent to kafka: %w", err)
+	}
+
+	return nil
+}
 func (r *Repository) MarkAsSentToKafkaInTx(ctx context.Context, destinationID int) error {
 	query := `
 		UPDATE post_destinations 
 		SET kafka_event_sent = true,
-			status= "received_for_publication",
+			status= "kafka_processed",
 			kafka_sent_at = $1
 		WHERE id = $2
 	`
