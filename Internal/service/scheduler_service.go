@@ -84,7 +84,6 @@ func (s *SchedulerService) processScheduledPublications(ctx context.Context) {
 func (s *SchedulerService) processPublication(ctx context.Context, pub domain.ScheduledPublication) error {
 	event := domain.PublicationEvent{
 		MessageID:       pub.ID_destination,
-		Timestamp:       pub.Scheduled_for,
 		ContentID:       strconv.Itoa(pub.ID_post),
 		SocialAccountID: strconv.Itoa(pub.ID_platform),
 		UserID:          strconv.Itoa(pub.ID_user),

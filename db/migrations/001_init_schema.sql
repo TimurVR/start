@@ -15,9 +15,9 @@ CREATE INDEX idx_posts_created_at ON posts(created_at);
 -- Таблица platforms
 CREATE TABLE platforms (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL UNIQUE,
-    api_config JSONB, 
-    description TEXT,
+    user_id INTEGER NOT NULL,
+    platform_name VARCHAR(50) NOT NULL,
+    api_config JSONB,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -38,10 +38,3 @@ CREATE TABLE post_destinations (
     CONSTRAINT fk_post_destinations_platform FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_posts_user_id ON posts(user_id);
-CREATE INDEX idx_posts_status ON posts(status);
-CREATE INDEX idx_posts_created_at ON posts(created_at);
-CREATE INDEX idx_post_destinations_post_id ON post_destinations(post_id);
-CREATE INDEX idx_post_destinations_platform_id ON post_destinations(platform_id);
-CREATE INDEX idx_post_destinations_scheduled_for ON post_destinations(scheduled_for);
-CREATE INDEX idx_post_destinations_status ON post_destinations(status);
