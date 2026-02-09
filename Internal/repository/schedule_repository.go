@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hexlet/Internal/domain"
 )
@@ -48,35 +49,60 @@ ORDER BY pd.scheduled_for ASC`
 
 	return publications, nil
 }
-func (r *Repository) MarkAsKafkaIsReady(ctx context.Context, destinationID int) error {
-	/*query := `
-		UPDATE post_destinations 
-		SET kafka_event_sent = true,
-			status= 'kafka_ready',
-			kafka_sent_at = $1
-		WHERE id = $2
-	`
-
-	_, err := r.Pool.Exec(ctx, query, time.Now(), destinationID)
+func (r *Repository) GetPlatformsByUserID(ctx context.Context,platform_name string,userID int) (domain.PlatformSQL, error) {
+	query := "SELECT platform_name, api_config, is_active FROM platforms WHERE user_id = $1"
+	rows, err := r.Pool.Query(ctx, query, userID)
 	if err != nil {
-		return fmt.Errorf("failed to mark as sent to kafka: %w", err)
+		return domain.PlatformSQL{}, err
 	}
-     */
-	return nil
+	var res domain.PlatformSQL
+	defer rows.Close()
+	for rows.Next() {
+		var platform domain.PlatformSQL
+		var configData []byte
+		err := rows.Scan(&platform.PlatformName, &configData, &platform.IsActive)
+		if err != nil {
+			return domain.PlatformSQL{}, err
+		}
+		if (!platform.IsActive || platform.PlatformName!=platform_name){
+			return domain.PlatformSQL{}, nil
+		}
+		if len(configData) > 0 {
+			var configMap map[string]string
+			if err := json.Unmarshal(configData, &configMap); err != nil {
+				continue
+			}
+			platform.APIConfig = configMap
+		}
+		res=platform
+		
+	}
+	if err := rows.Err(); err != nil {
+		return domain.PlatformSQL{}, err
+	}
+	return res, nil
 }
-func (r *Repository) MarkAsSentToKafkaInTx(ctx context.Context, destinationID int) error {
-	/*query := `
-		UPDATE post_destinations 
-		SET kafka_event_sent = true,
-			status= 'kafka_processed',
-			kafka_sent_at = $1
-		WHERE id = $2
+func (r *Repository) GetTitleANDContent(ctx context.Context, id int) (domain.Message, error) {
+    query := `
+        SELECT title, content FROM posts WHERE user_id = $1
+    `
+    var res domain.Message
+    err := r.Pool.QueryRow(ctx, query, id).Scan(&res.Title, &res.Content)   
+    if err != nil {
+        return domain.Message{}, err
+    }   
+    return res, nil
+}
+func (r *Repository) MarkAsSent(ctx context.Context, ID int) error {
+	query := `
+		UPDATE post_destinations
+		SET 
+			status= 'published'
+		WHERE id = $1
 	`
-
-	_, err := r.Pool.Exec(ctx, query, time.Now(), destinationID)
+	_, err := r.Pool.Exec(ctx, query, ID)
 	if err != nil {
-		return fmt.Errorf("failed to mark as sent to kafka: %w", err)
+		return fmt.Errorf("failed to mark as sent: %w", err)
 	}
-    */
 	return nil
 }

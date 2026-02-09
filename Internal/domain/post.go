@@ -46,9 +46,18 @@ type ScheduledPublication struct {
 }
 
 type PublicationEvent struct {
-	MessageID       int       `json:"massage_id"`
+	MessageID       int       `json:"message_id"`
 	Timestamp       time.Time `json:"timestamp"`
 	ContentID       string    `json:"content_id"`
 	SocialAccountID string    `json:"social_account_id"`
 	UserID          string    `json:"user_id"`
+}
+type PlatformSQL struct {
+    PlatformName string
+    APIConfig    map[string]string
+    IsActive     bool
+}
+type Message struct{
+	Title 	string
+	Content string
 }

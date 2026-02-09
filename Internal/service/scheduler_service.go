@@ -88,14 +88,8 @@ func (s *SchedulerService) processPublication(ctx context.Context, pub domain.Sc
 		SocialAccountID: strconv.Itoa(pub.ID_platform),
 		UserID:          strconv.Itoa(pub.ID_user),
 	}
-	if err := s.repo.MarkAsKafkaIsReady(ctx, pub.ID_destination); err != nil {
-		return fmt.Errorf("failed to update publication status: %w", err)
-	}
 	if err := s.kafkaProd.SendPublicationEvent(ctx, event); err != nil {
 		return fmt.Errorf("failed to send event to kafka: %w", err)
-	}
-	if err := s.repo.MarkAsSentToKafkaInTx(ctx, pub.ID_destination); err != nil {
-		return fmt.Errorf("failed to update publication status: %w", err)
 	}
 	log.Printf("Publication %d (Post %d -> Platform %d) sent to Kafka",
 		pub.ID_destination, pub.ID_post, pub.ID_platform)
