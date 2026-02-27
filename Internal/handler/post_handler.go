@@ -42,7 +42,7 @@ func (a App) CreatePost(rw *gin.Context) {
 		rw.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	responce.ID_user = request.ID_user
+	responce.ID_user = request.IDUser
 	rw.JSON(http.StatusOK, responce)
 }
 

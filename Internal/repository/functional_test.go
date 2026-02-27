@@ -117,7 +117,7 @@ func TestCreatePost(t *testing.T) {
     repo, ctx := setupTestDB(t)
     
     post := dto.CreatePostRequest{
-        ID_user: 1,
+        IDUser: 1,
         Title:   "First Post",
         Content: "Content 1",
         Status:  "draft",
@@ -155,7 +155,7 @@ func TestGetPostSimple(t *testing.T) {
     repo, ctx := setupTestDB(t)
     
     post := dto.CreatePostRequest{
-        ID_user: 1,
+        IDUser: 1,
         Title:   "First Post",
         Content: "Content 1",
         Status:  "draft",
@@ -181,31 +181,31 @@ func TestGetPostAdvanced(t *testing.T) {
     
     postsreq := []dto.CreatePostRequest{
         {
-            ID_user: 1,
+            IDUser: 1,
             Title:   "First Post",
             Content: "Content 1",
             Status:  "draft",
         },
         {
-            ID_user: 1,
+            IDUser: 1,
             Title:   "Second Post",
             Content: "Content 2",
             Status:  "draft",
         },
         {
-            ID_user: 2,
+            IDUser: 2,
             Title:   "First Post",
             Content: "Content 1",
             Status:  "scheduled",
         },
         {
-            ID_user: 3,
+            IDUser: 3,
             Title:   "First Post",
             Content: "Content 1",
             Status:  "published",
         },
         {
-            ID_user: 2,
+            IDUser: 2,
             Title:   "First Post",
             Content: "Content 1",
             Status:  "failed",
