@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -24,7 +25,12 @@ func main() {
 		log.Fatalf("failed to init DB connection: %v", err)
 	}
 	defer dbpool.Close()
-	a := app.NewApp(ctx, dbpool)
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatalf("failed to init logger: %v", err)
+	}
+	defer logger.Sync()
+	a := app.NewApp(ctx, dbpool, logger)
 	a.StartScheduler()
 	go func() {
 		time.Sleep(30 * time.Second)

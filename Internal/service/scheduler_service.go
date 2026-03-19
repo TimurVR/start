@@ -83,10 +83,10 @@ func (s *SchedulerService) processScheduledPublications(ctx context.Context) {
 
 func (s *SchedulerService) processPublication(ctx context.Context, pub domain.ScheduledPublication) error {
 	event := domain.PublicationEvent{
-		MessageID:       pub.ID_destination,
-		ContentID:       strconv.Itoa(pub.ID_post),
-		SocialAccountID: strconv.Itoa(pub.ID_platform),
-		UserID:          strconv.Itoa(pub.ID_user),
+		DestinationID: pub.ID_destination,
+		PostID:        strconv.Itoa(pub.ID_post),
+		PlatformID:    strconv.Itoa(pub.ID_platform),
+		UserID:        strconv.Itoa(pub.ID_user),
 	}
 	if err := s.kafkaProd.SendPublicationEvent(ctx, event); err != nil {
 		return fmt.Errorf("failed to send event to kafka: %w", err)

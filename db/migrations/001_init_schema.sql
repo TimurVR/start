@@ -1,11 +1,10 @@
 -- Таблица posts
 CREATE TABLE posts (
-id SERIAL PRIMARY KEY,
-user_id INTEGER NOT NULL,
-title VARCHAR(255) NOT NULL,
-content TEXT NOT NULL,
-status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'published', 'failed')),
-created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_posts_user_id ON posts(user_id);
@@ -26,11 +25,12 @@ CREATE TABLE platforms (
 -- Таблица post_destinations
 CREATE TABLE post_destinations (
     id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL,
     post_id INTEGER NOT NULL,
     platform_id INTEGER NOT NULL,
     scheduled_for TIMESTAMP WITH TIME ZONE,
     published_at TIMESTAMP WITH TIME ZONE,
-    status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'published', 'failed','processing','received_for_publication')),
+    status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'published', 'failed','processing')),
     error_message TEXT, 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     

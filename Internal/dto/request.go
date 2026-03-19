@@ -1,12 +1,54 @@
 package dto
 
-type CreatePostRequest struct {
-    IDUser  int    `json:"id_user" validate:"gt=0"` 
-    Title   string `json:"title" validate:"required,min=3,max=255"`
-    Content string `json:"content" validate:"required"`
-    Status  string `json:"-"`
-}
+import "time"
 
-type ScheduledRequest struct {
-    IDUser int `json:"id_user" validate:"gt=0"` 
+// posts
+type (
+	CreatePostRequest struct {
+		ID_user      int       `json:"id_user" validate:"required,gt=0"`
+		Title        string    `json:"title" validate:"required,min=3,max=255"`
+		Content      string    `json:"content" validate:"required"`
+		Sheduled_for time.Time `json:"sheduled_for" validate:"required"`
+		Status       string    `json:"-"`
+	}
+
+	DeletePostRequest struct {
+		ID_user int    `json:"id_user" validate:"required,gt=0"`
+		ID_post string `json:"id_post" validate:"required,gt=0"`
+	}
+
+	PutPostRequest struct {
+		ID_user      int       `json:"id_user"`
+		ID_post      string    `json:"id_post"`
+		Title        string    `json:"title"`
+		Content      string    `json:"content"`
+		Sheduled_for time.Time `json:"sheduled_for"`
+	}
+)
+
+// platforms
+type (
+	CreatePlatformRequest struct {
+		ID_user      int    `json:"id_user" validate:"required,gt=0"`
+		PlatformName string `json:"platfromname" validate:"required"`
+		Bot_name     string `json:"bot_name" validate:"required"`
+		Config       string `json:"config" validate:"required"`
+	}
+	DeletePlatformRequest struct {
+		ID_user     int `json:"id_user" validate:"required,gt=0"`
+		ID_platform int `json:"id_platform" validate:"required,gt=0"`
+	}
+
+	PutPlatformRequest struct {
+		ID_user      int    `json:"id_user" validate:"required,gt=0"`
+		ID_platform  int    `json:"id_platform" validate:"required,gt=0"`
+		PlatformName string `json:"platfromname" validate:"required"`
+		Bot_name     string `json:"content" validate:"required"`
+		Config       string `json:"config" validate:"required"`
+	}
+)
+
+// request для получения платформ/постов от пользователя
+type GetByUserIDRequest struct {
+	ID_user int `json:"id_user" validate:"required,gt=0"`
 }

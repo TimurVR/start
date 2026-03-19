@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"encoding/json"
+	"hexlet/Internal/domain"
 	"hexlet/Internal/handler" //docker-compose logs hexlet-project -f
 	"hexlet/Internal/kafka"   //docker-compose up -d --build
 	"hexlet/Internal/repository"
 	"hexlet/Internal/service"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,9 +20,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
 	kf "github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 type App struct {
@@ -31,16 +35,9 @@ type App struct {
 	Wg        sync.WaitGroup
 	Cancel    context.CancelFunc
 }
-type Message struct {
-	MessageID       int    `json:"message_id"`
-	Timestamp       string `json:"timestamp"`
-	ContentID       string `json:"content_id"`
-	SocialAccountID string `json:"social_account_id"`
-	UserID          string `json:"user_id"`
-}
 
-func NewApp(ctx context.Context, dbpool *pgxpool.Pool) *App {
-	repo := repository.NewRepository(dbpool)
+func NewApp(ctx context.Context, dbpool *pgxpool.Pool, logger *zap.Logger) *App {
+	repo := repository.NewRepository(dbpool, logger)
 	handlerApp := &handler.App{
 		Ctx:  ctx,
 		Repo: repo,
@@ -115,20 +112,17 @@ func (a *App) backgroundWorker(msg kf.Message) {
 
 	select {
 	case <-a.Ctx.Done():
-			log.Println("Worker stoped")
-			return
+		log.Println("Worker stoped")
+		return
 	case <-ticker.C:
-			a.proccesProcessing(msg)
+		a.proccesProcessing(msg)
 	}
 }
 
 func (a *App) proccesProcessing(msg kf.Message) {
-	key := string(msg.Key)
 	value := string(msg.Value)
-	topic := msg.Topic
-	partition := msg.Partition
-	offset := msg.Offset
-	var msg1 Message
+	var msg1 domain.PublicationEvent
+	log.Print(value)
 	err := json.Unmarshal([]byte(value), &msg1)
 	if err != nil {
 		log.Print(err)
@@ -139,36 +133,49 @@ func (a *App) proccesProcessing(msg kf.Message) {
 		log.Print(err1)
 		return
 	}
-	platform, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "Telegram", user_id)
-	if err2 != nil {
-		log.Print(err2)
+	post_id, err1 := strconv.Atoi(msg1.PostID)
+	if err1 != nil {
+		log.Print(err1)
 		return
 	}
-	message, err3 := a.Repo.GetTitleANDContent(a.Ctx, user_id)
+	message, err3 := a.Repo.GetTitleANDContent(a.Ctx, post_id)
 	if err3 != nil {
 		log.Print(err3)
 		return
 	}
-	text:=message.Title+"\n"+message.Content
-	for chatID,botToken:=range platform.APIConfig{
-		SentToTelegram(chatID,botToken,text)
-		_=chatID
-		_=botToken
-		log.Print("Cообщение отправлено")
+	text := message.Title + "\n" + message.Content
+	platformTG, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "Telegram", user_id)
+	if err2 != nil {
+		log.Print(err2)
+	} else {
+		for chatID, botToken := range platformTG.APIConfig {
+			err := SentToTelegram(chatID, botToken, text)
+			if err != nil {
+				err1 := a.Repo.ErrorMessage(a.Ctx, msg1.DestinationID, err)
+				if err1 != nil {
+					log.Print(err1)
+				}
+			}
+		}
 	}
-	err4:=a.Repo.MarkAsSent(a.Ctx,msg1.MessageID)
+	platformVK, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "VK", user_id)
+	if err2 != nil {
+		log.Print(err2)
+	} else {
+		for groupID, token := range platformVK.APIConfig {
+			err := SentToVK(groupID, token, text)
+			if err != nil {
+				err1 := a.Repo.ErrorMessage(a.Ctx, msg1.DestinationID, err)
+				if err1 != nil {
+					log.Print(err1)
+				}
+			}
+		}
+	}
+	err4 := a.Repo.MarkAsSent(a.Ctx, msg1.DestinationID)
 	if err4 != nil {
 		log.Print(err4)
 	}
-	log.Print(platform, message)
-	log.Printf("Получено сообщение:\n"+
-		"  Топик: %s\n"+
-		"  Партиция: %d\n"+
-		"  Смещение: %d\n"+
-		"  Ключ: %s\n"+
-		"  Значение: %s\n"+
-		"  Время: %v\n",
-		topic, partition, offset, key, value, msg.Time)
 }
 
 func (a *App) WaitForShutdown() {
@@ -180,19 +187,35 @@ func (a *App) WaitForShutdown() {
 	a.Wg.Wait()
 	log.Println("Shutdown complete")
 }
-func SentToTelegram(chatID string,botToken string,text string) {
-	//botToken := "8401889449:AAGp9DeX9LKN_TTmTLUprYyOfA_zNbIh9jo"
+
+func SentToTelegram(chatID string, botToken string, text string) error {
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
-		log.Println("Ошибка создания бота:", err)
+		log.Println("Ошибка создания бота(Telegramm):", err)
+		return err
 	}
 	log.Printf("Авторизован как %s", bot.Self.UserName)
-	//chatID := "@hxlt_autoposting"
 	msg := tgbotapi.NewMessageToChannel(chatID, text)
 	_, err = bot.Send(msg)
 	if err != nil {
-		log.Println("Ошибка отправки:", err)
-	} else {
-		log.Println("Сообщение успешно отправлено!")
+		log.Println("Ошибка отправки(Telegramm):", err)
+		return err
 	}
+	return nil
+}
+
+func SentToVK(groupID string, token string, text string) error {
+	apiURL := "https://api.vk.com/method/wall.post"
+	params := url.Values{}
+	params.Add("owner_id", groupID)
+	params.Add("message", text)
+	params.Add("access_token", token)
+	params.Add("v", "5.131")
+	resp, err := http.PostForm(apiURL, params)
+	if err != nil {
+		log.Println("Ошибка отправки(VK):", err)
+		return err
+	}
+	defer resp.Body.Close()
+	return nil
 }

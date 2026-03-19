@@ -3,35 +3,36 @@ package domain
 import "time"
 
 type Post struct {
-	ID_post    int       `json:"id_post"`
-	ID_user    int       `json:"id_user"`
-	Title      string    `json:"title"`
-	Content    string    `json:"content"`
-	Status     string    `json:"status"`
-	Created_at time.Time `json:"created_at"`
+	ID_post      int       `json:"id_post"`
+	ID_user      int       `json:"id_user"`
+	ID_platform  int       `json:"id_platform"`
+	Title        string    `json:"title"`
+	Content      string    `json:"content"`
+	Status       string    `json:"status"`
+	Created_at   time.Time `json:"created_at"`
+	Sheduled_for time.Time `json:"sheduled_for"`
+	PlatformName string    `json:"platform_name"`
+	ErrorMessage *string   `json:"error_message"`
 }
 
 type Platform struct {
-	ID_platform int       `json:"id_platform"`
-	Name        string    `json:"name"`
-	Api_config  string    `json:"api_config"`
-	Description string    `json:"description"`
-	Is_active   bool      `json:"is_active"`
-	Created_at  time.Time `json:"created_at"`
-	Updated_at  time.Time `json:"updated_at"`
+	ID_platform int               `json:"id_platform"`
+	Name        string            `json:"name"`
+	Api_config  map[string]string `json:"api_config"`
+	Is_active   bool              `json:"is_active"`
+	Created_at  time.Time         `json:"created_at"`
+	Updated_at  time.Time         `json:"updated_at"`
 }
 
 type PostDestination struct {
-	ID_destination   int        `json:"id_destination"`
-	ID_post          int        `json:"id_post"`
-	ID_platform      int        `json:"id_platform"`
-	Scheduled_for    *time.Time `json:"scheduled_for"`
-	Published_at     *time.Time `json:"published_at"`
-	Status           string     `json:"status"`
-	ErrorMessage     *string    `json:"error_message"`
-	Kafka_event_sent bool       `json:"kafka_event_sent"`
-	Kafka_sent_at    *time.Time `json:"kafka_sent_at"`
-	Created_at       time.Time  `json:"created_at"`
+	ID_destination int        `json:"id_destination"`
+	ID_post        int        `json:"id_post"`
+	ID_platform    int        `json:"id_platform"`
+	Scheduled_for  *time.Time `json:"scheduled_for"`
+	Published_at   *time.Time `json:"published_at"`
+	Status         string     `json:"status"`
+	ErrorMessage   *string    `json:"error_message"`
+	Created_at     time.Time  `json:"created_at"`
 }
 
 type ScheduledPublication struct {
@@ -46,18 +47,19 @@ type ScheduledPublication struct {
 }
 
 type PublicationEvent struct {
-	MessageID       int       `json:"message_id"`
-	Timestamp       time.Time `json:"timestamp"`
-	ContentID       string    `json:"content_id"`
-	SocialAccountID string    `json:"social_account_id"`
-	UserID          string    `json:"user_id"`
+	DestinationID int       `json:"destination_id"`
+	Timestamp     time.Time `json:"timestamp"`
+	PostID        string    `json:"post_id"`
+	PlatformID    string    `json:"platform_id"`
+	UserID        string    `json:"user_id"`
 }
+
 type PlatformSQL struct {
-    PlatformName string
-    APIConfig    map[string]string
-    IsActive     bool
+	PlatformName string
+	APIConfig    map[string]string
+	IsActive     bool
 }
-type Message struct{
-	Title 	string
+type Message struct {
+	Title   string
 	Content string
 }
