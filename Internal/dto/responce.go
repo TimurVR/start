@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"hexlet/Internal/domain"
+	"hexlet/internal/domain"
 	"time"
 )
 
@@ -44,3 +44,7 @@ type (
 		Platfroms []domain.Platform `json:"plstforms"`
 	}
 )
+
+type ErrorResponse struct {
+	Error string `json:"error" example:"error message"`
+}

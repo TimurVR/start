@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"hexlet/Internal/domain"
+	"hexlet/internal/domain"
 
 	"github.com/segmentio/kafka-go"
 )

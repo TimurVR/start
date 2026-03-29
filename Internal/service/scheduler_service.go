@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"time"
 
-	"hexlet/Internal/domain"
-	"hexlet/Internal/kafka"
-	"hexlet/Internal/repository"
+	"hexlet/internal/domain"
+	"hexlet/internal/kafka"
+	"hexlet/internal/repository"
 )
 
 type SchedulerService struct {

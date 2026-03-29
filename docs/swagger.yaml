@@ -1,0 +1,561 @@
+basePath: /
+definitions:
+  domain.Platform:
+    properties:
+      api_config:
+        additionalProperties:
+          type: string
+        type: object
+      created_at:
+        type: string
+      id_platform:
+        type: integer
+      is_active:
+        type: boolean
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.Post:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      error_message:
+        type: string
+      id_platform:
+        type: integer
+      id_post:
+        type: integer
+      id_user:
+        type: integer
+      platform_name:
+        type: string
+      sheduled_for:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  dto.CreatePlatformRequest:
+    properties:
+      bot_name:
+        type: string
+      config:
+        type: string
+      id_user:
+        type: integer
+      platfromname:
+        type: string
+    required:
+    - bot_name
+    - config
+    - id_user
+    - platfromname
+    type: object
+  dto.CreatePlatformResponce:
+    properties:
+      created_at:
+        type: string
+      id_platform:
+        type: integer
+      id_user:
+        type: integer
+    type: object
+  dto.CreatePostRequest:
+    properties:
+      content:
+        type: string
+      id_user:
+        type: integer
+      sheduled_for:
+        type: string
+      title:
+        maxLength: 255
+        minLength: 3
+        type: string
+    required:
+    - content
+    - id_user
+    - sheduled_for
+    - title
+    type: object
+  dto.CreatePostResponce:
+    properties:
+      created_at:
+        type: string
+      id_post:
+        type: integer
+      id_user:
+        type: integer
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+  dto.GetByUserIDRequest:
+    properties:
+      id_user:
+        type: integer
+    required:
+    - id_user
+    type: object
+  dto.GetPlatformResponce:
+    properties:
+      plstforms:
+        items:
+          $ref: '#/definitions/domain.Platform'
+        type: array
+    type: object
+  dto.GetPostResponce:
+    properties:
+      post:
+        items:
+          $ref: '#/definitions/domain.Post'
+        type: array
+    type: object
+  dto.GetPostsResponce:
+    properties:
+      failed:
+        items:
+          $ref: '#/definitions/domain.Post'
+        type: array
+      processing:
+        items:
+          $ref: '#/definitions/domain.Post'
+        type: array
+      published:
+        items:
+          $ref: '#/definitions/domain.Post'
+        type: array
+      scheduled:
+        items:
+          $ref: '#/definitions/domain.Post'
+        type: array
+    type: object
+  dto.PutPlatformRequest:
+    properties:
+      config:
+        type: string
+      content:
+        type: string
+      id_platform:
+        type: integer
+      id_user:
+        type: integer
+      platfromname:
+        type: string
+    required:
+    - config
+    - content
+    - id_platform
+    - id_user
+    - platfromname
+    type: object
+  dto.PutPlatformResponce:
+    properties:
+      id_platform:
+        type: integer
+      id_user:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  dto.PutPostRequest:
+    properties:
+      content:
+        type: string
+      id_post:
+        type: string
+      id_user:
+        type: integer
+      sheduled_for:
+        type: string
+      title:
+        type: string
+    type: object
+  dto.PutPostResponce:
+    properties:
+      id_post:
+        type: integer
+      id_user:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: This is a project of autoposting in Telegramm and VK.
+  title: Autoposing API
+  version: "1.0"
+paths:
+  /platforms:
+    get:
+      consumes:
+      - application/json
+      description: getting all platforms of user
+      parameters:
+      - description: user info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetByUserIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetPlatformResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get user platforms
+      tags:
+      - platforms
+    post:
+      consumes:
+      - application/json
+      description: creating a platform for user
+      parameters:
+      - description: platform info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePlatformRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CreatePlatformResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create platform
+      tags:
+      - platforms
+  /platforms/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: deleting a platform by ID
+      parameters:
+      - description: Platform ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetByUserIDRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete platform
+      tags:
+      - platforms
+    get:
+      consumes:
+      - application/json
+      description: getting a platform by platform ID and user ID
+      parameters:
+      - description: Platform ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetByUserIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Platform'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get platform by ID
+      tags:
+      - platforms
+    put:
+      consumes:
+      - application/json
+      description: updating a platform by ID
+      parameters:
+      - description: Platform ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: platform update info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PutPlatformRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PutPlatformResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update platform
+      tags:
+      - platforms
+  /posts:
+    get:
+      consumes:
+      - application/json
+      description: getting posts of user (sorted by status)
+      parameters:
+      - description: user info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetByUserIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetPostsResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get user posts
+      tags:
+      - posts
+    post:
+      consumes:
+      - application/json
+      description: creating a post
+      parameters:
+      - description: post info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.CreatePostResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Create a post
+      tags:
+      - posts
+  /posts/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: deleting a post by ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetByUserIDRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Delete post
+      tags:
+      - posts
+    get:
+      consumes:
+      - application/json
+      description: getting a post by post ID and user ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: user info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetByUserIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetPostResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Get post by ID
+      tags:
+      - posts
+    put:
+      consumes:
+      - application/json
+      description: updating a post by ID
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: post update info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PutPostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.PutPostResponce'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Update post
+      tags:
+      - posts
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

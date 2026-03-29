@@ -1,11 +1,13 @@
-version: '3.8'
-
 services:
   hexlet-project:
     build: .
     ports:
       - "8080:8080"
     environment:
+      - MASTER_HOST=${MASTER_HOST}
+      - MASTER_PORT=${MASTER_PORT}
+      - SLAVE_HOST=${SLAVE_HOST}
+      - SLAVE_PORT=${SLAVE_PORT}
       - DB_HOST=postgres
       - DB_PORT=5432
       - POSTGRES_USER=${DB_USER}
@@ -14,29 +16,51 @@ services:
       - DB_SSLMODE=disable
       - KAFKA_BROKERS=kafka:9092
     depends_on:
-      - postgres
+      - master
+      - slave
       - kafka  
     networks:
       - app-network
-
-  postgres:
-    image: postgres:18
+  master:
+    image: postgres:17
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql  
+      - master_data:/var/lib/postgresql
       - ./db/migrations:/docker-entrypoint-initdb.d
+      - ./db/setup-replication.sh:/docker-entrypoint-initdb.d/setup-replication.sh
     networks:
       - app-network
-    healthcheck:  
+    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
+  slave:
+    image: postgres:17
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      - PGPASSWORD=${DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - slave_data:/var/lib/postgresql/data
+    entrypoint: >
+      bash -c "
+      rm -rf /var/lib/postgresql/data/* &&
+      until pg_basebackup -h master -D /var/lib/postgresql/data -U ${DB_USER} -vP -R -X stream; do
+      echo 'Waiting for master...' && sleep 3;
+      done;
+      exec docker-entrypoint.sh postgres"
+    networks:
+      - app-network 
 
   zookeeper:
     image: zookeeper:3.7.0
@@ -60,7 +84,8 @@ services:
       - app-network
 
 volumes:
-  postgres_data:
+  master_data:
+  slave_data:
 
 networks:
   app-network:

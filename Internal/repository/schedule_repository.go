@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"hexlet/Internal/domain"
+	"hexlet/internal/domain"
 	"time"
 
 	"github.com/robfig/cron/v3"
@@ -33,7 +33,7 @@ func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) 
         AND pd.scheduled_for <= NOW()
         ORDER BY pd.scheduled_for ASC
         LIMIT $1`
-		rows, err := r.Pool.Query(taskCtx, query, batchSize)
+		rows, err := r.SlavePool.Query(taskCtx, query, batchSize)
 		if err != nil {
 			fmt.Printf("CRON: failed to query scheduled publications: %v\n", err)
 			return
@@ -75,7 +75,7 @@ func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) 
 
 func (r *Repository) GetPlatformsByUserID(ctx context.Context, platform_name string, userID int) (domain.PlatformSQL, error) {
 	query := "SELECT platform_name, api_config, is_active FROM platforms WHERE user_id = $1"
-	rows, err := r.Pool.Query(ctx, query, userID)
+	rows, err := r.SlavePool.Query(ctx, query, userID)
 	if err != nil {
 		r.logger.Error("GetPlatformsByUserID failed in query",
 			zap.Error(err),
@@ -128,7 +128,7 @@ func (r *Repository) GetTitleANDContent(ctx context.Context, id int) (domain.Mes
         SELECT title, content FROM posts WHERE id = $1
     `
 	var res domain.Message
-	err := r.Pool.QueryRow(ctx, query, id).Scan(&res.Title, &res.Content)
+	err := r.SlavePool.QueryRow(ctx, query, id).Scan(&res.Title, &res.Content)
 	if err != nil {
 		r.logger.Error("GetTitleANDContent failed",
 			zap.Error(err),
@@ -146,7 +146,7 @@ func (r *Repository) MarkAsSent(ctx context.Context, ID int) error {
 			status= 'published', published_at = $1
 		WHERE id = $2
 	`
-	_, err := r.Pool.Exec(ctx, query, time.Now(), ID)
+	_, err := r.MasterPool.Exec(ctx, query, time.Now(), ID)
 	if err != nil {
 		r.logger.Error("MarkAsSent failed",
 			zap.Error(err),
@@ -164,7 +164,7 @@ func (r *Repository) ErrorMessage(ctx context.Context, destination_id int, err e
 			error_message = $1
 		WHERE id = $2
 	`
-	_, err1 := r.Pool.Exec(ctx, query, err, destination_id)
+	_, err1 := r.MasterPool.Exec(ctx, query, err, destination_id)
 	if err1 != nil {
 		r.logger.Error("ErrorMessage failed",
 			zap.Error(err1),

@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"hexlet/Internal/domain"
-	"hexlet/Internal/dto"
+	"hexlet/internal/domain"
+	"hexlet/internal/dto"
 	"strconv"
 	"time"
 
@@ -26,14 +26,16 @@ type PostRepository interface {
 	UpdatePlatformByID(ctx context.Context, req dto.PutPlatformRequest) (dto.PutPlatformResponce, error)
 }
 type Repository struct {
-	Pool   *pgxpool.Pool
-	logger *zap.Logger
+	MasterPool *pgxpool.Pool
+	SlavePool  *pgxpool.Pool
+	logger     *zap.Logger
 }
 
-func NewRepository(pool *pgxpool.Pool, logger *zap.Logger) *Repository {
+func NewRepository(masterpool *pgxpool.Pool, slavepool *pgxpool.Pool, logger *zap.Logger) *Repository {
 	return &Repository{
-		Pool:   pool,
-		logger: logger,
+		MasterPool: masterpool,
+		SlavePool:  slavepool,
+		logger:     logger,
 	}
 }
 
@@ -60,7 +62,7 @@ CREATE TABLE post_destinations (
 
 */
 func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) (dto.GetPostResponce, error) {
-	rows, err := r.Pool.Query(ctx, "SELECT user_id, platform_id, scheduled_for, status, error_message FROM post_destinations WHERE post_id=$1 AND user_id=$2 ", ID_post, ID_user)
+	rows, err := r.SlavePool.Query(ctx, "SELECT user_id, platform_id, scheduled_for, status, error_message FROM post_destinations WHERE post_id=$1 AND user_id=$2 ", ID_post, ID_user)
 	if err != nil {
 		r.logger.Error("GetPostByID failed in selecting from post_destinations",
 			zap.Error(err),
@@ -84,7 +86,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) 
 			)
 			continue
 		}
-		err = r.Pool.QueryRow(ctx, "SELECT title, content, created_at FROM posts WHERE id=$1", p1.ID_post).Scan(
+		err = r.SlavePool.QueryRow(ctx, "SELECT title, content, created_at FROM posts WHERE id=$1", p1.ID_post).Scan(
 			&p1.Title, &p1.Content, &p1.Created_at)
 		if err != nil {
 			r.logger.Error("GetPostByID failed in selecting from posts",
@@ -94,7 +96,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) 
 			)
 			continue
 		}
-		err = r.Pool.QueryRow(ctx, "SELECT platform_name FROM platforms WHERE id=$1", p1.ID_platform).Scan(
+		err = r.SlavePool.QueryRow(ctx, "SELECT platform_name FROM platforms WHERE id=$1", p1.ID_platform).Scan(
 			&p1.PlatformName)
 		if err != nil {
 			r.logger.Error("GetPostByID failed in selecting from platforms",
@@ -110,7 +112,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) 
 }
 
 func (r *Repository) DeletePostByID(ctx context.Context, ID_post int) error {
-	_, err := r.Pool.Exec(ctx, "DELETE FROM posts WHERE id=$1", ID_post)
+	_, err := r.MasterPool.Exec(ctx, "DELETE FROM posts WHERE id=$1", ID_post)
 	if err != nil {
 		r.logger.Error("DeletePostByID failed in deleting in posts",
 			zap.Error(err),
@@ -118,7 +120,7 @@ func (r *Repository) DeletePostByID(ctx context.Context, ID_post int) error {
 		)
 		return err
 	}
-	_, err = r.Pool.Exec(ctx, "DELETE FROM post_destinations WHERE post_id=$1", ID_post)
+	_, err = r.MasterPool.Exec(ctx, "DELETE FROM post_destinations WHERE post_id=$1", ID_post)
 	if err != nil {
 		r.logger.Error("DeletePostByID failed in deleting in post_destinations",
 			zap.Error(err),
@@ -130,7 +132,7 @@ func (r *Repository) DeletePostByID(ctx context.Context, ID_post int) error {
 }
 
 func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResponce, error) {
-	rows, err := r.Pool.Query(ctx, "SELECT post_id, platform_id, scheduled_for, status, error_message FROM post_destinations WHERE user_id=$1", ID_user)
+	rows, err := r.SlavePool.Query(ctx, "SELECT post_id, platform_id, scheduled_for, status, error_message FROM post_destinations WHERE user_id=$1", ID_user)
 	if err != nil {
 		r.logger.Error("GetPost failed in selecting from post_destinations",
 			zap.Error(err),
@@ -156,7 +158,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResp
 			)
 			continue
 		}
-		err = r.Pool.QueryRow(ctx, "SELECT title, content, created_at FROM posts WHERE id=$1", p1.ID_post).Scan(
+		err = r.SlavePool.QueryRow(ctx, "SELECT title, content, created_at FROM posts WHERE id=$1", p1.ID_post).Scan(
 			&p1.Title, &p1.Content, &p1.Created_at)
 		if err != nil {
 			r.logger.Error("GetPost failed in selecting from posts",
@@ -166,7 +168,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResp
 			)
 			continue
 		}
-		err = r.Pool.QueryRow(ctx, "SELECT platform_name FROM platforms WHERE id=$1", p1.ID_platform).Scan(
+		err = r.SlavePool.QueryRow(ctx, "SELECT platform_name FROM platforms WHERE id=$1", p1.ID_platform).Scan(
 			&p1.PlatformName)
 		if err != nil {
 			r.logger.Error("GetPost failed in selecting from platforms",
@@ -191,7 +193,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResp
 }
 
 func (r *Repository) UpdatePostByID(ctx context.Context, req dto.PutPostRequest) (dto.PutPostResponce, error) {
-	_, err := r.Pool.Exec(ctx, `
+	_, err := r.MasterPool.Exec(ctx, `
 		UPDATE posts 
 		SET title = $1, content = $2 
 		WHERE id = $3 AND user_id = $4`,
@@ -205,7 +207,7 @@ func (r *Repository) UpdatePostByID(ctx context.Context, req dto.PutPostRequest)
 		)
 		return dto.PutPostResponce{}, err
 	}
-	_, err = r.Pool.Exec(ctx, `
+	_, err = r.MasterPool.Exec(ctx, `
 		UPDATE post_destinations
 		SET scheduled_for = $1
 		WHERE id = $2 AND user_id = $3`,
@@ -225,7 +227,7 @@ func (r *Repository) UpdatePostByID(ctx context.Context, req dto.PutPostRequest)
 func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest) (int, time.Time, error) {
 	var ID int
 	var createdAt time.Time
-	err := r.Pool.QueryRow(ctx, `INSERT INTO posts (user_id, title, content) VALUES ($1, $2, $3) RETURNING id, created_at;`,
+	err := r.MasterPool.QueryRow(ctx, `INSERT INTO posts (user_id, title, content) VALUES ($1, $2, $3) RETURNING id, created_at;`,
 		post.ID_user, post.Title, post.Content).Scan(&ID, &createdAt)
 	if err != nil {
 		r.logger.Error("CreatePost failed in inserting to posts",
@@ -234,7 +236,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 		)
 		return ID, createdAt, err
 	}
-	platforms_ids, err := r.Pool.Query(ctx, "SELECT id FROM platforms WHERE user_id=$1", post.ID_user)
+	platforms_ids, err := r.SlavePool.Query(ctx, "SELECT id FROM platforms WHERE user_id=$1", post.ID_user)
 	if err != nil {
 		r.logger.Error("CreatePost failed in selecting",
 			zap.Error(err),
@@ -253,7 +255,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 			)
 			continue
 		}
-		_, err1 := r.Pool.Exec(ctx,
+		_, err1 := r.MasterPool.Exec(ctx,
 			`INSERT INTO post_destinations (user_id, post_id, platform_id,status, scheduled_for) VALUES ($1, $2, $3, $4,$5)`,
 			post.ID_user, ID, platform_id, "scheduled", post.Sheduled_for)
 		if err1 != nil {
@@ -285,7 +287,7 @@ func (r *Repository) CreatePlatform(ctx context.Context, platform dto.CreatePlat
 	var createdAt time.Time
 	APIConfig := make(map[string]interface{})
 	APIConfig[platform.Bot_name] = platform.Config
-	err := r.Pool.QueryRow(ctx, `
+	err := r.MasterPool.QueryRow(ctx, `
         INSERT INTO platforms (user_id, platform_name, api_config, is_active) 
         VALUES ($1, $2, $3, $4) 
         RETURNING id, created_at;`,
@@ -305,7 +307,7 @@ func (r *Repository) CreatePlatform(ctx context.Context, platform dto.CreatePlat
 }
 
 func (r *Repository) GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatformResponce, error) {
-	rows, err := r.Pool.Query(ctx, "SELECT id, platform_name, api_config, is_active, created_at, updated_at FROM platforms WHERE user_id=$1", ID_user)
+	rows, err := r.SlavePool.Query(ctx, "SELECT id, platform_name, api_config, is_active, created_at, updated_at FROM platforms WHERE user_id=$1", ID_user)
 	if err != nil {
 		r.logger.Error("GetPlatform failed",
 			zap.Error(err),
@@ -333,7 +335,7 @@ func (r *Repository) GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatf
 
 func (r *Repository) GetPlatformByID(ctx context.Context, ID_platform int, ID_user int) (domain.Platform, error) {
 	res := domain.Platform{}
-	err := r.Pool.QueryRow(ctx, "SELECT id, platform_name, api_config, is_active, created_at, updated_at FROM platforms WHERE user_id=$1 AND id=$2", ID_user, ID_platform).Scan(
+	err := r.SlavePool.QueryRow(ctx, "SELECT id, platform_name, api_config, is_active, created_at, updated_at FROM platforms WHERE user_id=$1 AND id=$2", ID_user, ID_platform).Scan(
 		&res.ID_platform, &res.Name, &res.Api_config, &res.Is_active, &res.Created_at, &res.Updated_at)
 	if err != nil {
 		r.logger.Error("GetPlatformByID failed",
@@ -347,7 +349,7 @@ func (r *Repository) GetPlatformByID(ctx context.Context, ID_platform int, ID_us
 }
 
 func (r *Repository) DeletePlatformByID(ctx context.Context, ID_platform int) error {
-	_, err := r.Pool.Exec(ctx, "DELETE FROM platforms WHERE id=$1", ID_platform)
+	_, err := r.MasterPool.Exec(ctx, "DELETE FROM platforms WHERE id=$1", ID_platform)
 	if err != nil {
 		r.logger.Error("DeletePlatformByID failed in deleting from platforms",
 			zap.Error(err),
@@ -355,7 +357,7 @@ func (r *Repository) DeletePlatformByID(ctx context.Context, ID_platform int) er
 		)
 		return err
 	}
-	_, err = r.Pool.Exec(ctx, "DELETE FROM post_destinations WHERE platform_id=$1", ID_platform)
+	_, err = r.MasterPool.Exec(ctx, "DELETE FROM post_destinations WHERE platform_id=$1", ID_platform)
 	if err != nil {
 		r.logger.Error("DeletePlatformByID failed in deleting from post_destinations",
 			zap.Error(err),
@@ -378,7 +380,7 @@ func (r *Repository) UpdatePlatformByID(ctx context.Context, req dto.PutPlatform
 		)
 		return dto.PutPlatformResponce{}, err
 	}
-	_, err = r.Pool.Exec(ctx, `
+	_, err = r.MasterPool.Exec(ctx, `
 		UPDATE platforms
 		SET  api_config = $1
 		WHERE id = $2 AND user_id = $3`,

@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"hexlet/Internal/app"
-	"hexlet/Internal/config"
 	storage "hexlet/Internal/storage"
+	"hexlet/internal/app"
+	"hexlet/internal/config"
 	"log"
 	"time"
 
@@ -13,24 +13,45 @@ import (
 	"go.uber.org/zap"
 )
 
+// @title           Autoposing API
+// @version         1.0
+// @description     This is a project of autoposting in Telegramm and VK.
+
+// @host      localhost:8080
+// @BasePath  /
+
+// @securityDefinitions.basic  BasicAuth
+
 func main() {
 	r := gin.Default()
 	ctx := context.Background()
-	cfg, err := config.LoadConfig()
+	mastercfg, err := config.LoadConfigMaster()
 	if err != nil {
-		log.Fatal("Cannot load config:", err)
+		log.Fatal("Cannot load master config:", err)
 	}
-	dbpool, err := storage.InitDBConn(ctx, cfg)
+
+	dbpoolmaster, err := storage.InitDBConn(ctx, mastercfg)
 	if err != nil {
-		log.Fatalf("failed to init DB connection: %v", err)
+		log.Fatalf("failed to init master DB connection: %v", err)
 	}
-	defer dbpool.Close()
+	log.Println("Succes master DB conection")
+	defer dbpoolmaster.Close()
+	slavecfg, err := config.LoadConfigSlave()
+	if err != nil {
+		log.Fatal("Cannot load slave config:", err)
+	}
+	dbpoolslave, err := storage.InitDBConn(ctx, slavecfg)
+	if err != nil {
+		log.Fatalf("failed to init slave DB connection: %v", err)
+	}
+	log.Println("Succes slave DB conection")
+	defer dbpoolslave.Close()
 	logger, err := zap.NewProduction()
 	if err != nil {
 		log.Fatalf("failed to init logger: %v", err)
 	}
 	defer logger.Sync()
-	a := app.NewApp(ctx, dbpool, logger)
+	a := app.NewApp(ctx, dbpoolmaster, dbpoolslave, logger)
 	a.StartScheduler()
 	go func() {
 		time.Sleep(30 * time.Second)

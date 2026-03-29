@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"hexlet/Internal/domain"
-	"hexlet/Internal/dto"
+	"hexlet/internal/domain"
+	"hexlet/internal/dto"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"

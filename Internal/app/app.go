@@ -3,11 +3,11 @@ package app
 import (
 	"context"
 	"encoding/json"
-	"hexlet/Internal/domain"
-	"hexlet/Internal/handler" //docker-compose logs hexlet-project -f
-	"hexlet/Internal/kafka"   //docker-compose up -d --build
-	"hexlet/Internal/repository"
-	"hexlet/Internal/service"
+	"hexlet/internal/domain"
+	"hexlet/internal/handler" //docker-compose logs hexlet-project -f
+	"hexlet/internal/kafka"   //docker-compose up -d --build
+	"hexlet/internal/repository"
+	"hexlet/internal/service"
 	"log"
 	"net/http"
 	"net/url"
@@ -36,8 +36,8 @@ type App struct {
 	Cancel    context.CancelFunc
 }
 
-func NewApp(ctx context.Context, dbpool *pgxpool.Pool, logger *zap.Logger) *App {
-	repo := repository.NewRepository(dbpool, logger)
+func NewApp(ctx context.Context, masterdbpool *pgxpool.Pool, slavedbpool *pgxpool.Pool, logger *zap.Logger) *App {
+	repo := repository.NewRepository(masterdbpool, slavedbpool, logger)
 	handlerApp := &handler.App{
 		Ctx:  ctx,
 		Repo: repo,

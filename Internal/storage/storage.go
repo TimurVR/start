@@ -3,10 +3,9 @@ package repository
 import (
 	"context"
 	"fmt"
-	"hexlet/Internal/config"
+	"hexlet/internal/config"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -105,18 +104,11 @@ func waitForDB(ctx context.Context, config DBConfig) error {
 
 func loadDBConfig(cfgenv *config.Config) DBConfig {
 	return DBConfig{
-		Host:     getEnv("DB_HOST", "postgres"),
-		Port:     getEnv("DB_PORT", "5432"),
-		User:     getEnv("DB_USER", cfgenv.DBUser),
-		Password: getEnv("DB_PASSWORD", cfgenv.DBPassword),
-		DBName:   getEnv("DB_NAME", cfgenv.DBName),
-		SSLMode:  getEnv("DB_SSLMODE", "disable"),
+		Host:     cfgenv.DBHost,
+		Port:     cfgenv.DBPort,
+		User:     cfgenv.DBUser,
+		Password: cfgenv.DBPassword,
+		DBName:   cfgenv.DBName,
+		SSLMode:  "disable",
 	}
-}
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }
