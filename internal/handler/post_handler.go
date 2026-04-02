@@ -2,16 +2,17 @@ package handler
 
 import (
 	"context"
+	_ "hexlet/docs"
 	"hexlet/internal/domain"
 	"hexlet/internal/dto"
 	"hexlet/internal/repository"
-	_ "hexlet/docs"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/markbates/goth/gothic"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -34,6 +35,8 @@ func (a *App) Routes(r *gin.Engine) {
 	r.GET("/platforms/:id", a.GetPlatform)
 	r.PUT("/platforms/:id", a.PutPlatform)
 	r.DELETE("/platforms/:id", a.DeletePlatform)
+	//auth
+	r.GET("/auth/:provider/callback", a.getAuthCallbackFunction)
 	//not found
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -432,4 +435,15 @@ func (a *App) DeletePlatform(rw *gin.Context) {
 		return
 	}
 	rw.Status(204)
+}
+
+func (a *App) getAuthCallbackFunction(rw *gin.Context) {
+	provider := rw.Param("provider")
+	r := rw.Request.WithContext(context.WithValue(context.Background(), "provider", provider))
+	user, err := gothic.CompleteUserAuth(rw.Writer, r)
+	if err != nil {
+		log.Print(rw.Writer, r)
+		return
+	}
+	log.Print(user)
 }

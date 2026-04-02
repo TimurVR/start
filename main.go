@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"hexlet/internal/app"
+	"hexlet/internal/auth"
 	"hexlet/internal/config"
 	storage "hexlet/internal/storage"
 	"log"
@@ -23,6 +24,7 @@ import (
 // @securityDefinitions.basic  BasicAuth
 
 func main() {
+	auth.NewAuth()
 	r := gin.Default()
 	ctx := context.Background()
 	mastercfg, err := config.LoadConfigMaster()
