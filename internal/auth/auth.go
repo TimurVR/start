@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/gorilla/sessions"
@@ -21,10 +22,10 @@ func NewAuth() {
 	store.Options.Path = "/"
 	store.Options.HttpOnly = true
 	store.Options.Secure = IsProd
-
+	store.Options.SameSite = http.SameSiteLaxMode
 	gothic.Store = store
 	goth.UseProviders(
-		google.New(getEnv("GOOGLE_KEY"), getEnv("GOOGLE_SECRET"), "http://localhost:8080"),
+		google.New(getEnv("GOOGLE_KEY"), getEnv("GOOGLE_SECRET"), "http://localhost:8080/auth/google/callback"),
 	)
 }
 

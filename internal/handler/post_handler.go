@@ -37,6 +37,7 @@ func (a *App) Routes(r *gin.Engine) {
 	r.DELETE("/platforms/:id", a.DeletePlatform)
 	//auth
 	r.GET("/auth/:provider/callback", a.getAuthCallbackFunction)
+	r.GET("/auth/:provider", a.beginAuthFunction)
 	//not found
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -379,7 +380,7 @@ func (a *App) PutPlatform(rw *gin.Context) {
 		return
 	}
 	if request.Bot_name == "" {
-		for key, _ := range platform.Api_config {
+		for key:= range platform.Api_config {
 			request.Bot_name = key
 		}
 	}
@@ -437,13 +438,24 @@ func (a *App) DeletePlatform(rw *gin.Context) {
 	rw.Status(204)
 }
 
-func (a *App) getAuthCallbackFunction(rw *gin.Context) {
-	provider := rw.Param("provider")
-	r := rw.Request.WithContext(context.WithValue(context.Background(), "provider", provider))
-	user, err := gothic.CompleteUserAuth(rw.Writer, r)
-	if err != nil {
-		log.Print(rw.Writer, r)
-		return
-	}
-	log.Print(user)
+func (a *App) getAuthCallbackFunction(c *gin.Context) {
+    provider := c.Param("provider")
+    req := c.Request.WithContext(context.WithValue(c.Request.Context(), "provider", provider))
+    user, err := gothic.CompleteUserAuth(c.Writer, req)
+    if err != nil {
+        log.Printf("Error in auth: %v", err)
+        c.AbortWithStatus(http.StatusUnauthorized)
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{
+        "id":    user.UserID,
+        "email": user.Email,
+        "name":  user.Name,
+    })
+}
+
+func (a *App) beginAuthFunction(c *gin.Context) {
+    provider := c.Param("provider")
+    req := c.Request.WithContext(context.WithValue(c.Request.Context(), "provider", provider))
+    gothic.BeginAuthHandler(c.Writer, req)
 }

@@ -24,7 +24,7 @@ import (
 // @securityDefinitions.basic  BasicAuth
 
 func main() {
-	auth.NewAuth()
+
 	r := gin.Default()
 	ctx := context.Background()
 	mastercfg, err := config.LoadConfigMaster()
@@ -55,6 +55,7 @@ func main() {
 	defer logger.Sync()
 	a := app.NewApp(ctx, dbpoolmaster, dbpoolslave, logger)
 	a.StartScheduler()
+	auth.NewAuth()
 	go func() {
 		time.Sleep(30 * time.Second)
 		readerConfig := kafka.ReaderConfig{
