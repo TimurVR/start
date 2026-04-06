@@ -133,12 +133,7 @@ func (a *App) proccesProcessing(msg kf.Message) {
 		log.Print(err1)
 		return
 	}
-	post_id, err1 := strconv.Atoi(msg1.PostID)
-	if err1 != nil {
-		log.Print(err1)
-		return
-	}
-	message, err3 := a.Repo.GetTitleANDContent(a.Ctx, post_id)
+	message, err3 := a.Repo.GetTitleANDContent(a.Ctx, msg1.PostID)
 	if err3 != nil {
 		log.Print(err3)
 		return

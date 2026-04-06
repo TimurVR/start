@@ -9,12 +9,12 @@ import (
 type (
 	CreatePostResponce struct {
 		ID_post    int       `json:"id_post"`
-		ID_user    int       `json:"id_user"`
+		ID_user    string    `json:"id_user"`
 		Created_at time.Time `json:"created_at"`
 	}
 	PutPostResponce struct {
 		ID_post    int       `json:"id_post"`
-		ID_user    int       `json:"id_user"`
+		ID_user    string    `json:"id_user"`
 		Updated_at time.Time `json:"updated_at"`
 	}
 	GetPostsResponce struct {
@@ -32,12 +32,12 @@ type (
 type (
 	CreatePlatformResponce struct {
 		ID_platform int       `json:"id_platform"`
-		ID_user     int       `json:"id_user"`
+		ID_user     string    `json:"id_user"`
 		Created_at  time.Time `json:"created_at"`
 	}
 	PutPlatformResponce struct {
 		ID_platform int       `json:"id_platform"`
-		ID_user     int       `json:"id_user"`
+		ID_user     string    `json:"id_user"`
 		Updated_at  time.Time `json:"updated_at"`
 	}
 	GetPlatformResponce struct {

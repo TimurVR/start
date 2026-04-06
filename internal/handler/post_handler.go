@@ -196,7 +196,7 @@ func (a *App) PutPost(rw *gin.Context) {
 	if request.Sheduled_for.IsZero() {
 		request.Sheduled_for = post.Posts[0].Sheduled_for
 	}
-	request.ID_post = req
+	request.ID_post = id
 	var responce dto.PutPostResponce
 	responce, err = a.Repo.UpdatePostByID(a.Ctx, request)
 	rw.JSON(http.StatusOK, responce)
@@ -380,7 +380,7 @@ func (a *App) PutPlatform(rw *gin.Context) {
 		return
 	}
 	if request.Bot_name == "" {
-		for key:= range platform.Api_config {
+		for key := range platform.Api_config {
 			request.Bot_name = key
 		}
 	}
@@ -438,24 +438,24 @@ func (a *App) DeletePlatform(rw *gin.Context) {
 	rw.Status(204)
 }
 
-func (a *App) getAuthCallbackFunction(c *gin.Context) {
-    provider := c.Param("provider")
-    req := c.Request.WithContext(context.WithValue(c.Request.Context(), "provider", provider))
-    user, err := gothic.CompleteUserAuth(c.Writer, req)
-    if err != nil {
-        log.Printf("Error in auth: %v", err)
-        c.AbortWithStatus(http.StatusUnauthorized)
-        return
-    }
-    c.JSON(http.StatusOK, gin.H{
-        "id":    user.UserID,
-        "email": user.Email,
-        "name":  user.Name,
-    })
+func (a *App) getAuthCallbackFunction(rw *gin.Context) {
+	provider := rw.Param("provider")
+	req := rw.Request.WithContext(context.WithValue(rw.Request.Context(), "provider", provider))
+	user, err := gothic.CompleteUserAuth(rw.Writer, req)
+	if err != nil {
+		log.Printf("Error in auth: %v", err)
+		rw.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	rw.JSON(http.StatusOK, gin.H{
+		"id":    user.UserID,
+		"email": user.Email,
+		"name":  user.Name,
+	})
 }
 
-func (a *App) beginAuthFunction(c *gin.Context) {
-    provider := c.Param("provider")
-    req := c.Request.WithContext(context.WithValue(c.Request.Context(), "provider", provider))
-    gothic.BeginAuthHandler(c.Writer, req)
+func (a *App) beginAuthFunction(rw *gin.Context) {
+	provider := rw.Param("provider")
+	req := rw.Request.WithContext(context.WithValue(rw.Request.Context(), "provider", provider))
+	gothic.BeginAuthHandler(rw.Writer, req)
 }

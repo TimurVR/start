@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"hexlet/internal/domain"
@@ -39,7 +40,7 @@ func (p *Producer) SendPublicationEvent(ctx context.Context, event domain.Public
 	}
 
 	message := kafka.Message{
-		Key:   []byte(event.PostID),
+		Key:   []byte(strconv.Itoa(event.PostID)),
 		Value: eventJSON,
 		Time:  time.Now(),
 	}

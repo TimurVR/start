@@ -28,12 +28,12 @@ func (m *MockPostRepository) CreatePost(ctx context.Context, post dto.CreatePost
 	return args.Int(0), args.Get(1).(time.Time), args.Error(2)
 }
 
-func (m *MockPostRepository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResponce, error) {
+func (m *MockPostRepository) GetPost(ctx context.Context, ID_user string) (dto.GetPostsResponce, error) {
 	args := m.Called(ctx, ID_user)
 	return args.Get(0).(dto.GetPostsResponce), args.Error(1)
 }
 
-func (m *MockPostRepository) GetPostByID(ctx context.Context, ID_post int, ID_user int) (dto.GetPostResponce, error) {
+func (m *MockPostRepository) GetPostByID(ctx context.Context, ID_post int, ID_user string) (dto.GetPostResponce, error) {
 	args := m.Called(ctx, ID_post, ID_user)
 	return args.Get(0).(dto.GetPostResponce), args.Error(1)
 }
@@ -53,12 +53,12 @@ func (m *MockPostRepository) CreatePlatform(ctx context.Context, platform dto.Cr
 	return args.Int(0), args.Get(1).(time.Time), args.Error(2)
 }
 
-func (m *MockPostRepository) GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatformResponce, error) {
+func (m *MockPostRepository) GetPlatform(ctx context.Context, ID_user string) (dto.GetPlatformResponce, error) {
 	args := m.Called(ctx, ID_user)
 	return args.Get(0).(dto.GetPlatformResponce), args.Error(1)
 }
 
-func (m *MockPostRepository) GetPlatformByID(ctx context.Context, ID_platform int, ID_user int) (domain.Platform, error) {
+func (m *MockPostRepository) GetPlatformByID(ctx context.Context, ID_platform int, ID_user string) (domain.Platform, error) {
 	args := m.Called(ctx, ID_platform, ID_user)
 	return args.Get(0).(domain.Platform), args.Error(1)
 }
@@ -96,7 +96,7 @@ func TestCreatePost_Success(t *testing.T) {
 
 	scheduledTime := time.Now().Add(24 * time.Hour).Round(0)
 	reqBody := dto.CreatePostRequest{
-		ID_user:      1,
+		ID_user:      "1",
 		Title:        "Test Post",
 		Content:      "Test Content",
 		Sheduled_for: scheduledTime,
@@ -104,7 +104,7 @@ func TestCreatePost_Success(t *testing.T) {
 
 	expectedTime := time.Now().Round(0)
 	mockRepo.On("CreatePost", mock.Anything, mock.MatchedBy(func(req dto.CreatePostRequest) bool {
-		return req.ID_user == 1 &&
+		return req.ID_user == "1" &&
 			req.Title == "Test Post" &&
 			req.Content == "Test Content" &&
 			req.Status == "scheduled" &&
@@ -124,7 +124,7 @@ func TestCreatePost_Success(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, response.ID_post)
-	assert.Equal(t, 1, response.ID_user)
+	assert.Equal(t, "1", response.ID_user)
 	assert.True(t, compareTime(expectedTime, response.Created_at))
 
 	mockRepo.AssertExpectations(t)
@@ -169,7 +169,7 @@ func TestCreatePost_RepositoryError(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.CreatePostRequest{
-		ID_user:      1,
+		ID_user:      "1",
 		Title:        "Test Post",
 		Content:      "Test Content",
 		Sheduled_for: time.Now().Add(24 * time.Hour),
@@ -200,13 +200,13 @@ func TestGetPosts_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 	expectedResponse := dto.GetPostsResponce{
 		Scheduled: []domain.Post{
 			{
 				ID_post:      1,
-				ID_user:      1,
+				ID_user:      "1",
 				Title:        "Scheduled Post",
 				Content:      "Content 1",
 				Status:       "scheduled",
@@ -217,7 +217,7 @@ func TestGetPosts_Success(t *testing.T) {
 		Processing: []domain.Post{
 			{
 				ID_post:      2,
-				ID_user:      1,
+				ID_user:      "1",
 				Title:        "Processing Post",
 				Content:      "Content 2",
 				Status:       "processing",
@@ -228,7 +228,7 @@ func TestGetPosts_Success(t *testing.T) {
 		Published: []domain.Post{
 			{
 				ID_post:    3,
-				ID_user:    1,
+				ID_user:    "1",
 				Title:      "Published Post",
 				Content:    "Content 3",
 				Status:     "published",
@@ -238,7 +238,7 @@ func TestGetPosts_Success(t *testing.T) {
 		Failed: []domain.Post{
 			{
 				ID_post:      4,
-				ID_user:      1,
+				ID_user:     "1",
 				Title:        "Failed Post",
 				Content:      "Content 4",
 				Status:       "failed",
@@ -248,7 +248,7 @@ func TestGetPosts_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetPost", mock.Anything, 1).Return(expectedResponse, nil)
+	mockRepo.On("GetPost", mock.Anything, "1").Return(expectedResponse, nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/posts", bytes.NewBuffer(jsonBody))
@@ -294,10 +294,10 @@ func TestGetPosts_RepositoryError(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
-	mockRepo.On("GetPost", mock.Anything, 1).Return(dto.GetPostsResponce{}, errors.New("database error"))
+	mockRepo.On("GetPost", mock.Anything, "1").Return(dto.GetPostsResponce{}, errors.New("database error"))
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/posts", bytes.NewBuffer(jsonBody))
@@ -321,7 +321,7 @@ func TestGetPost_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	scheduledTime := time.Now().Add(24 * time.Hour).Round(0)
@@ -329,7 +329,7 @@ func TestGetPost_Success(t *testing.T) {
 		Posts: []domain.Post{
 			{
 				ID_post:      1,
-				ID_user:      1,
+				ID_user:      "1",
 				Title:        "Test Post",
 				Content:      "Test Content",
 				Status:       "scheduled",
@@ -339,7 +339,7 @@ func TestGetPost_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetPostByID", mock.Anything, 1, 1).Return(expectedPost, nil)
+	mockRepo.On("GetPostByID", mock.Anything, 1, "1").Return(expectedPost, nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/posts/1", bytes.NewBuffer(jsonBody))
@@ -382,7 +382,7 @@ func TestPutPost_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.PutPostRequest{
-		ID_user: 1,
+		ID_user: "1",
 		Title:   "Updated Title",
 		Content: "Updated Content",
 	}
@@ -391,7 +391,7 @@ func TestPutPost_Success(t *testing.T) {
 		Posts: []domain.Post{
 			{
 				ID_post:      1,
-				ID_user:      1,
+				ID_user:      "1",
 				Title:        "Original Title",
 				Content:      "Original Content",
 				Sheduled_for: time.Now().Add(24 * time.Hour),
@@ -401,11 +401,11 @@ func TestPutPost_Success(t *testing.T) {
 
 	expectedResponse := dto.PutPostResponce{
 		ID_post:    1,
-		ID_user:    1,
+		ID_user:    "1",
 		Updated_at: time.Now().Round(0),
 	}
 
-	mockRepo.On("GetPostByID", mock.Anything, 1, 1).Return(existingPost, nil)
+	mockRepo.On("GetPostByID", mock.Anything, 1, "1").Return(existingPost, nil)
 	mockRepo.On("UpdatePostByID", mock.Anything, mock.MatchedBy(func(req dto.PutPostRequest) bool {
 		return req.Title == "Updated Title" && req.Content == "Updated Content"
 	})).Return(expectedResponse, nil)
@@ -424,9 +424,8 @@ func TestPutPost_Success(t *testing.T) {
 func TestPutPost_WithEmptyFields(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
-	// Отправляем только ID_user, остальные поля пустые
 	reqBody := dto.PutPostRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	scheduledTime := time.Now().Add(24 * time.Hour).Round(0)
@@ -434,7 +433,7 @@ func TestPutPost_WithEmptyFields(t *testing.T) {
 		Posts: []domain.Post{
 			{
 				ID_post:      1,
-				ID_user:      1,
+				ID_user:      "1",
 				Title:        "Original Title",
 				Content:      "Original Content",
 				Sheduled_for: scheduledTime,
@@ -444,14 +443,13 @@ func TestPutPost_WithEmptyFields(t *testing.T) {
 
 	expectedResponse := dto.PutPostResponce{
 		ID_post:    1,
-		ID_user:    1,
+		ID_user:    "1",
 		Updated_at: time.Now().Round(0),
 	}
 
-	mockRepo.On("GetPostByID", mock.Anything, 1, 1).Return(existingPost, nil)
-	// Проверяем, что используются значения из существующего поста
+	mockRepo.On("GetPostByID", mock.Anything, 1, "1").Return(existingPost, nil)
 	mockRepo.On("UpdatePostByID", mock.Anything, mock.MatchedBy(func(req dto.PutPostRequest) bool {
-		return req.ID_user == 1 &&
+		return req.ID_user == "1" &&
 			req.Title == "Original Title" &&
 			req.Content == "Original Content" &&
 			compareTime(req.Sheduled_for, scheduledTime)
@@ -472,7 +470,7 @@ func TestPutPost_InvalidID(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.PutPostRequest{
-		ID_user: 1,
+		ID_user: "1",
 		Title:   "Updated Title",
 		Content: "Updated Content",
 	}
@@ -500,16 +498,16 @@ func TestDeletePost_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	expectedPost := dto.GetPostResponce{
 		Posts: []domain.Post{
-			{ID_post: 1, ID_user: 1},
+			{ID_post: 1, ID_user: "1"},
 		},
 	}
 
-	mockRepo.On("GetPostByID", mock.Anything, 1, 1).Return(expectedPost, nil)
+	mockRepo.On("GetPostByID", mock.Anything, 1, "1").Return(expectedPost, nil)
 	mockRepo.On("DeletePostByID", mock.Anything, 1).Return(nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -527,10 +525,10 @@ func TestDeletePost_NotFound(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
-	mockRepo.On("GetPostByID", mock.Anything, 1, 1).Return(dto.GetPostResponce{}, errors.New("not found"))
+	mockRepo.On("GetPostByID", mock.Anything, 1, "1").Return(dto.GetPostResponce{}, errors.New("not found"))
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/posts/1", bytes.NewBuffer(jsonBody))
@@ -548,7 +546,7 @@ func TestDeletePost_InvalidID(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -574,7 +572,7 @@ func TestCreatePlatform_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.CreatePlatformRequest{
-		ID_user:      1,
+		ID_user:      "1",
 		PlatformName: "Test Platform",
 		Bot_name:     "test_bot",
 		Config:       "test_config",
@@ -582,7 +580,7 @@ func TestCreatePlatform_Success(t *testing.T) {
 
 	expectedTime := time.Now().Round(0)
 	mockRepo.On("CreatePlatform", mock.Anything, mock.MatchedBy(func(req dto.CreatePlatformRequest) bool {
-		return req.ID_user == 1 &&
+		return req.ID_user == "1" &&
 			req.PlatformName == "Test Platform" &&
 			req.Bot_name == "test_bot" &&
 			req.Config == "test_config"
@@ -601,7 +599,7 @@ func TestCreatePlatform_Success(t *testing.T) {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, response.ID_platform)
-	assert.Equal(t, 1, response.ID_user)
+	assert.Equal(t, "1", response.ID_user)
 	assert.True(t, compareTime(expectedTime, response.Created_at))
 
 	mockRepo.AssertExpectations(t)
@@ -628,7 +626,7 @@ func TestGetPlatforms_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	expectedResponse := dto.GetPlatformResponce{
@@ -656,7 +654,7 @@ func TestGetPlatforms_Success(t *testing.T) {
 		},
 	}
 
-	mockRepo.On("GetPlatform", mock.Anything, 1).Return(expectedResponse, nil)
+	mockRepo.On("GetPlatform", mock.Anything, "1").Return(expectedResponse, nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms", bytes.NewBuffer(jsonBody))
@@ -681,10 +679,10 @@ func TestGetPlatforms_RepositoryError(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
-	mockRepo.On("GetPlatform", mock.Anything, 1).Return(dto.GetPlatformResponce{}, errors.New("database error"))
+	mockRepo.On("GetPlatform", mock.Anything, "1").Return(dto.GetPlatformResponce{}, errors.New("database error"))
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms", bytes.NewBuffer(jsonBody))
@@ -708,7 +706,7 @@ func TestGetPlatform_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	expectedPlatform := domain.Platform{
@@ -722,7 +720,7 @@ func TestGetPlatform_Success(t *testing.T) {
 		Updated_at: time.Now().Round(0),
 	}
 
-	mockRepo.On("GetPlatformByID", mock.Anything, 1, 1).Return(expectedPlatform, nil)
+	mockRepo.On("GetPlatformByID", mock.Anything, 1, "1").Return(expectedPlatform, nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms/1", bytes.NewBuffer(jsonBody))
@@ -746,7 +744,7 @@ func TestGetPlatform_InvalidID(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -770,10 +768,10 @@ func TestGetPlatform_NotFound(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
-	mockRepo.On("GetPlatformByID", mock.Anything, 1, 1).Return(domain.Platform{}, errors.New("not found"))
+	mockRepo.On("GetPlatformByID", mock.Anything, 1, "1").Return(domain.Platform{}, errors.New("not found"))
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms/1", bytes.NewBuffer(jsonBody))
@@ -797,7 +795,7 @@ func TestPutPlatform_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.PutPlatformRequest{
-		ID_user:      1,
+		ID_user:      "1",
 		ID_platform:  1,
 		PlatformName: "Updated Platform",
 		Bot_name:     "updated_bot",
@@ -815,13 +813,13 @@ func TestPutPlatform_Success(t *testing.T) {
 
 	expectedResponse := dto.PutPlatformResponce{
 		ID_platform: 1,
-		ID_user:     1,
+		ID_user:     "1",
 		Updated_at:  time.Now().Round(0),
 	}
 
-	mockRepo.On("GetPlatformByID", mock.Anything, 1, 1).Return(existingPlatform, nil)
+	mockRepo.On("GetPlatformByID", mock.Anything, 1, "1").Return(existingPlatform, nil)
 	mockRepo.On("UpdatePlatformByID", mock.Anything, mock.MatchedBy(func(req dto.PutPlatformRequest) bool {
-		return req.ID_user == 1 &&
+		return req.ID_user == "1" &&
 			req.ID_platform == 1 &&
 			req.PlatformName == "Updated Platform" &&
 			req.Bot_name == "updated_bot" &&
@@ -843,7 +841,7 @@ func TestPutPlatform_InvalidID(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.PutPlatformRequest{
-		ID_user:      1,
+		ID_user:      "1",
 		ID_platform:  1,
 		PlatformName: "Updated Platform",
 		Bot_name:     "updated_bot",
@@ -873,7 +871,7 @@ func TestDeletePlatform_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	existingPlatform := domain.Platform{
@@ -881,7 +879,7 @@ func TestDeletePlatform_Success(t *testing.T) {
 		Name:        "Test Platform",
 	}
 
-	mockRepo.On("GetPlatformByID", mock.Anything, 1, 1).Return(existingPlatform, nil)
+	mockRepo.On("GetPlatformByID", mock.Anything, 1, "1").Return(existingPlatform, nil)
 	mockRepo.On("DeletePlatformByID", mock.Anything, 1).Return(nil)
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -899,10 +897,10 @@ func TestDeletePlatform_NotFound(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
-	mockRepo.On("GetPlatformByID", mock.Anything, 1, 1).Return(domain.Platform{}, errors.New("not found"))
+	mockRepo.On("GetPlatformByID", mock.Anything, 1, "1").Return(domain.Platform{}, errors.New("not found"))
 
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/platforms/1", bytes.NewBuffer(jsonBody))
@@ -920,7 +918,7 @@ func TestDeletePlatform_InvalidID(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	reqBody := dto.GetByUserIDRequest{
-		ID_user: 1,
+		ID_user: "1",
 	}
 
 	jsonBody, _ := json.Marshal(reqBody)
@@ -961,7 +959,6 @@ func TestNoRoute(t *testing.T) {
 	assert.Equal(t, "GET", response["method"])
 }
 
-// Вспомогательная функция для создания указателя на строку
 func stringPtr(s string) *string {
 	return &s
 }

@@ -4,7 +4,7 @@ import "time"
 
 type Post struct {
 	ID_post      int       `json:"id_post"`
-	ID_user      int       `json:"id_user"`
+	ID_user      string    `json:"id_user"`
 	ID_platform  int       `json:"id_platform"`
 	Title        string    `json:"title"`
 	Content      string    `json:"content"`
@@ -38,10 +38,10 @@ type PostDestination struct {
 type ScheduledPublication struct {
 	ID_destination int    `json:"id_destination"`
 	ID_post        int    `json:"id_post"`
-	ID_user        int    `json:"id_user"`
+	ID_user        string `json:"id_user"`
 	Title          string `json:"title"`
 	Content        string `json:"content"`
-	ID_platform    int    `json:"id_platform"`
+	ID_platform    int `json:"id_platform"`
 	Platform_name  string `json:"platform_name"`
 	Api_config     string `json:"api_config"`
 }
@@ -49,8 +49,8 @@ type ScheduledPublication struct {
 type PublicationEvent struct {
 	DestinationID int       `json:"destination_id"`
 	Timestamp     time.Time `json:"timestamp"`
-	PostID        string    `json:"post_id"`
-	PlatformID    string    `json:"platform_id"`
+	PostID        int       `json:"post_id"`
+	PlatformID    int       `json:"platform_id"`
 	UserID        string    `json:"user_id"`
 }
 

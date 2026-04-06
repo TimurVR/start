@@ -1,7 +1,7 @@
 -- Таблица posts
 CREATE TABLE posts (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -13,7 +13,7 @@ CREATE INDEX idx_posts_created_at ON posts(created_at);
 -- Таблица platforms
 CREATE TABLE platforms (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     platform_name VARCHAR(50) NOT NULL,
     api_config JSONB,
     is_active BOOLEAN DEFAULT true,
@@ -24,7 +24,7 @@ CREATE TABLE platforms (
 -- Таблица post_destinations
 CREATE TABLE post_destinations (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
     post_id INTEGER NOT NULL,
     platform_id INTEGER NOT NULL,
     scheduled_for TIMESTAMP WITH TIME ZONE,

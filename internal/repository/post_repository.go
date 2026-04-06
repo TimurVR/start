@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"hexlet/internal/domain"
 	"hexlet/internal/dto"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -14,14 +13,14 @@ import (
 
 type PostRepository interface {
 	CreatePost(ctx context.Context, post dto.CreatePostRequest) (int, time.Time, error)
-	GetPost(ctx context.Context, ID_user int) (dto.GetPostsResponce, error)
-	GetPostByID(ctx context.Context, ID_post int, ID_user int) (dto.GetPostResponce, error)
+	GetPost(ctx context.Context, ID_user string) (dto.GetPostsResponce, error)
+	GetPostByID(ctx context.Context, ID_post int, ID_user string) (dto.GetPostResponce, error)
 	DeletePostByID(ctx context.Context, ID_post int) error
 	UpdatePostByID(ctx context.Context, req dto.PutPostRequest) (dto.PutPostResponce, error)
 
 	CreatePlatform(ctx context.Context, platform dto.CreatePlatformRequest) (int, time.Time, error)
-	GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatformResponce, error)
-	GetPlatformByID(ctx context.Context, ID_platform int, ID_user int) (domain.Platform, error)
+	GetPlatform(ctx context.Context, ID_user string) (dto.GetPlatformResponce, error)
+	GetPlatformByID(ctx context.Context, ID_platform int, ID_user string) (domain.Platform, error)
 	DeletePlatformByID(ctx context.Context, ID_platform int) error
 	UpdatePlatformByID(ctx context.Context, req dto.PutPlatformRequest) (dto.PutPlatformResponce, error)
 }
@@ -61,13 +60,13 @@ CREATE TABLE post_destinations (
 );
 
 */
-func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) (dto.GetPostResponce, error) {
+func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user string) (dto.GetPostResponce, error) {
 	rows, err := r.SlavePool.Query(ctx, "SELECT user_id, platform_id, scheduled_for, status, error_message FROM post_destinations WHERE post_id=$1 AND user_id=$2 ", ID_post, ID_user)
 	if err != nil {
 		r.logger.Error("GetPostByID failed in selecting from post_destinations",
 			zap.Error(err),
 			zap.Int("post_id", ID_post),
-			zap.Int("user_id", ID_user),
+			zap.String("user_id", ID_user),
 		)
 		return dto.GetPostResponce{}, err
 	}
@@ -82,7 +81,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) 
 			r.logger.Error("GetPostByID failed in scaning",
 				zap.Error(err),
 				zap.Int("post_id", ID_post),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -92,7 +91,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) 
 			r.logger.Error("GetPostByID failed in selecting from posts",
 				zap.Error(err),
 				zap.Int("post_id", ID_post),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -102,7 +101,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user int) 
 			r.logger.Error("GetPostByID failed in selecting from platforms",
 				zap.Error(err),
 				zap.Int("post_id", ID_post),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -131,12 +130,12 @@ func (r *Repository) DeletePostByID(ctx context.Context, ID_post int) error {
 	return nil
 }
 
-func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResponce, error) {
+func (r *Repository) GetPost(ctx context.Context, ID_user string) (dto.GetPostsResponce, error) {
 	rows, err := r.SlavePool.Query(ctx, "SELECT post_id, platform_id, scheduled_for, status, error_message FROM post_destinations WHERE user_id=$1", ID_user)
 	if err != nil {
 		r.logger.Error("GetPost failed in selecting from post_destinations",
 			zap.Error(err),
-			zap.Int("user_id", ID_user),
+			zap.String("user_id", ID_user),
 		)
 		return dto.GetPostsResponce{}, err
 	}
@@ -154,7 +153,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResp
 			r.logger.Error("GetPost failed in scaning",
 				zap.Error(err),
 				zap.Int("post_id", p1.ID_post),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -164,7 +163,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResp
 			r.logger.Error("GetPost failed in selecting from posts",
 				zap.Error(err),
 				zap.Int("post_id", p1.ID_post),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -174,7 +173,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user int) (dto.GetPostsResp
 			r.logger.Error("GetPost failed in selecting from platforms",
 				zap.Error(err),
 				zap.Int("platform_id", p1.ID_platform),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -202,8 +201,8 @@ func (r *Repository) UpdatePostByID(ctx context.Context, req dto.PutPostRequest)
 	if err != nil {
 		r.logger.Error("UpdatePostByID failed in updating in posts",
 			zap.Error(err),
-			zap.Int("user_id", req.ID_user),
-			zap.String("post_id", req.ID_post),
+			zap.String("user_id", req.ID_user),
+			zap.Int("post_id", req.ID_post),
 		)
 		return dto.PutPostResponce{}, err
 	}
@@ -216,12 +215,12 @@ func (r *Repository) UpdatePostByID(ctx context.Context, req dto.PutPostRequest)
 	if err != nil {
 		r.logger.Error("UpdatePostByID failed in updating in post_destinations",
 			zap.Error(err),
-			zap.Int("user_id", req.ID_user),
-			zap.String("post_id", req.ID_post),
+			zap.String("user_id", req.ID_user),
+			zap.Int("post_id", req.ID_post),
 		)
 		return dto.PutPostResponce{}, err
 	}
-	id_post, _ := strconv.Atoi(req.ID_post)
+	id_post := req.ID_post
 	return dto.PutPostResponce{ID_post: id_post, ID_user: req.ID_user, Updated_at: time.Now()}, nil
 }
 func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest) (int, time.Time, error) {
@@ -232,7 +231,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 	if err != nil {
 		r.logger.Error("CreatePost failed in inserting to posts",
 			zap.Error(err),
-			zap.Int("user_id", post.ID_user),
+			zap.String("user_id", post.ID_user),
 		)
 		return ID, createdAt, err
 	}
@@ -240,7 +239,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 	if err != nil {
 		r.logger.Error("CreatePost failed in selecting",
 			zap.Error(err),
-			zap.Int("user_id", post.ID_user),
+			zap.String("user_id", post.ID_user),
 		)
 		return ID, createdAt, err
 	}
@@ -251,7 +250,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 		if err != nil {
 			r.logger.Error("CreatePost failed in scaning",
 				zap.Error(err),
-				zap.Int("user_id", post.ID_user),
+				zap.String("user_id", post.ID_user),
 			)
 			continue
 		}
@@ -261,7 +260,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 		if err1 != nil {
 			r.logger.Error("CreatePost failed in inserting to post_destinations",
 				zap.Error(err1),
-				zap.Int("user_id", post.ID_user),
+				zap.String("user_id", post.ID_user),
 			)
 			return ID, createdAt, err1
 		}
@@ -299,19 +298,19 @@ func (r *Repository) CreatePlatform(ctx context.Context, platform dto.CreatePlat
 	if err != nil {
 		r.logger.Error("CreatePlatform failed",
 			zap.Error(err),
-			zap.Int("user_id", platform.ID_user),
+			zap.String("user_id", platform.ID_user),
 		)
 		return ID, createdAt, err
 	}
 	return ID, createdAt, nil
 }
 
-func (r *Repository) GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatformResponce, error) {
+func (r *Repository) GetPlatform(ctx context.Context, ID_user string) (dto.GetPlatformResponce, error) {
 	rows, err := r.SlavePool.Query(ctx, "SELECT id, platform_name, api_config, is_active, created_at, updated_at FROM platforms WHERE user_id=$1", ID_user)
 	if err != nil {
 		r.logger.Error("GetPlatform failed",
 			zap.Error(err),
-			zap.Int("user_id", ID_user),
+			zap.String("user_id", ID_user),
 		)
 		return dto.GetPlatformResponce{}, err
 	}
@@ -324,7 +323,7 @@ func (r *Repository) GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatf
 		if err != nil {
 			r.logger.Error("GetPlatform failed in scaning",
 				zap.Error(err),
-				zap.Int("user_id", ID_user),
+				zap.String("user_id", ID_user),
 			)
 			continue
 		}
@@ -333,7 +332,7 @@ func (r *Repository) GetPlatform(ctx context.Context, ID_user int) (dto.GetPlatf
 	return res, nil
 }
 
-func (r *Repository) GetPlatformByID(ctx context.Context, ID_platform int, ID_user int) (domain.Platform, error) {
+func (r *Repository) GetPlatformByID(ctx context.Context, ID_platform int, ID_user string) (domain.Platform, error) {
 	res := domain.Platform{}
 	err := r.SlavePool.QueryRow(ctx, "SELECT id, platform_name, api_config, is_active, created_at, updated_at FROM platforms WHERE user_id=$1 AND id=$2", ID_user, ID_platform).Scan(
 		&res.ID_platform, &res.Name, &res.Api_config, &res.Is_active, &res.Created_at, &res.Updated_at)
@@ -341,7 +340,7 @@ func (r *Repository) GetPlatformByID(ctx context.Context, ID_platform int, ID_us
 		r.logger.Error("GetPlatformByID failed",
 			zap.Error(err),
 			zap.Int("platform_id", ID_platform),
-			zap.Int("user_id", ID_user),
+			zap.String("user_id", ID_user),
 		)
 		return domain.Platform{}, err
 	}
@@ -376,7 +375,7 @@ func (r *Repository) UpdatePlatformByID(ctx context.Context, req dto.PutPlatform
 		r.logger.Error("UpdatePlatformByID failed in marshal",
 			zap.Error(err),
 			zap.Int("platform_id", req.ID_platform),
-			zap.Int("user_id", req.ID_user),
+			zap.String("user_id", req.ID_user),
 		)
 		return dto.PutPlatformResponce{}, err
 	}
@@ -390,7 +389,7 @@ func (r *Repository) UpdatePlatformByID(ctx context.Context, req dto.PutPlatform
 		r.logger.Error("UpdatePlatformByID failed in query",
 			zap.Error(err),
 			zap.Int("platform_id", req.ID_platform),
-			zap.Int("user_id", req.ID_user),
+			zap.String("user_id", req.ID_user),
 		)
 		return dto.PutPlatformResponce{}, err
 	}
