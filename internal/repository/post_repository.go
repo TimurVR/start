@@ -83,7 +83,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user strin
 				zap.Int("post_id", ID_post),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return res, err
 		}
 		err = r.SlavePool.QueryRow(ctx, "SELECT title, content, created_at FROM posts WHERE id=$1", p1.ID_post).Scan(
 			&p1.Title, &p1.Content, &p1.Created_at)
@@ -93,7 +93,7 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user strin
 				zap.Int("post_id", ID_post),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return res, err
 		}
 		err = r.SlavePool.QueryRow(ctx, "SELECT platform_name FROM platforms WHERE id=$1", p1.ID_platform).Scan(
 			&p1.PlatformName)
@@ -103,8 +103,10 @@ func (r *Repository) GetPostByID(ctx context.Context, ID_post int, ID_user strin
 				zap.Int("post_id", ID_post),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return res, err
 		}
+		p1.Sheduled_for = p1.Sheduled_for.Add(3 * time.Hour)
+		p1.Created_at = p1.Created_at.Add(3 * time.Hour)
 		res.Posts = append(res.Posts, p1)
 	}
 	return res, nil
@@ -155,7 +157,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user string) (dto.GetPostsR
 				zap.Int("post_id", p1.ID_post),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return dto.GetPostsResponce{}, err
 		}
 		err = r.SlavePool.QueryRow(ctx, "SELECT title, content, created_at FROM posts WHERE id=$1", p1.ID_post).Scan(
 			&p1.Title, &p1.Content, &p1.Created_at)
@@ -165,7 +167,7 @@ func (r *Repository) GetPost(ctx context.Context, ID_user string) (dto.GetPostsR
 				zap.Int("post_id", p1.ID_post),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return dto.GetPostsResponce{}, err
 		}
 		err = r.SlavePool.QueryRow(ctx, "SELECT platform_name FROM platforms WHERE id=$1", p1.ID_platform).Scan(
 			&p1.PlatformName)
@@ -175,8 +177,10 @@ func (r *Repository) GetPost(ctx context.Context, ID_user string) (dto.GetPostsR
 				zap.Int("platform_id", p1.ID_platform),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return dto.GetPostsResponce{}, err
 		}
+		p1.Sheduled_for = p1.Sheduled_for.Add(3 * time.Hour)
+		p1.Created_at = p1.Created_at.Add(3 * time.Hour)
 		switch p1.Status {
 		case "processing":
 			res.Processing = append(res.Processing, p1)
@@ -252,7 +256,7 @@ func (r *Repository) CreatePost(ctx context.Context, post dto.CreatePostRequest)
 				zap.Error(err),
 				zap.String("user_id", post.ID_user),
 			)
-			continue
+			return 0, createdAt, err
 		}
 		_, err1 := r.MasterPool.Exec(ctx,
 			`INSERT INTO post_destinations (user_id, post_id, platform_id,status, scheduled_for) VALUES ($1, $2, $3, $4,$5)`,
@@ -325,7 +329,7 @@ func (r *Repository) GetPlatform(ctx context.Context, ID_user string) (dto.GetPl
 				zap.Error(err),
 				zap.String("user_id", ID_user),
 			)
-			continue
+			return res, err
 		}
 		res.Platfroms = append(res.Platfroms, p1)
 	}

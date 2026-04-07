@@ -73,13 +73,13 @@ func (r *Repository) GetReadyForPublication(ctx context.Context, batchSize int) 
 	return publications, nil
 }
 
-func (r *Repository) GetPlatformsByUserID(ctx context.Context, platform_name string, userID int) (domain.PlatformSQL, error) {
+func (r *Repository) GetPlatformsByUserID(ctx context.Context, platform_name string, userID string) (domain.PlatformSQL, error) {
 	query := "SELECT platform_name, api_config, is_active FROM platforms WHERE user_id = $1"
 	rows, err := r.SlavePool.Query(ctx, query, userID)
 	if err != nil {
 		r.logger.Error("GetPlatformsByUserID failed in query",
 			zap.Error(err),
-			zap.Int("user_id", userID),
+			zap.String("user_id", userID),
 		)
 		return domain.PlatformSQL{}, err
 	}
@@ -92,14 +92,14 @@ func (r *Repository) GetPlatformsByUserID(ctx context.Context, platform_name str
 		if err != nil {
 			r.logger.Error("GetPlatformsByUserID failed in scaning",
 				zap.Error(err),
-				zap.Int("user_id", userID),
+				zap.String("user_id", userID),
 			)
 			return domain.PlatformSQL{}, err
 		}
 		if !platform.IsActive || platform.PlatformName != platform_name {
 			r.logger.Error("GetPlatformsByUserID not active",
 				zap.Error(err),
-				zap.Int("user_id", userID),
+				zap.String("user_id", userID),
 			)
 			return domain.PlatformSQL{}, nil
 		}
@@ -108,7 +108,7 @@ func (r *Repository) GetPlatformsByUserID(ctx context.Context, platform_name str
 			if err := json.Unmarshal(configData, &configMap); err != nil {
 				r.logger.Error("GetPlatformsByUserID in unmarshaling",
 					zap.Error(err),
-					zap.Int("user_id", userID),
+					zap.String("user_id", userID),
 				)
 				continue
 			}

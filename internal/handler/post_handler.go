@@ -2,16 +2,22 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	_ "hexlet/docs"
+	"hexlet/internal/auth"
 	"hexlet/internal/domain"
 	"hexlet/internal/dto"
 	"hexlet/internal/repository"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/markbates/goth/gothic"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -23,21 +29,30 @@ type App struct {
 }
 
 func (a *App) Routes(r *gin.Engine) {
-	//posts
-	r.POST("/posts", a.CreatePost)
-	r.GET("/posts", a.GetPosts)
-	r.GET("/posts/:id", a.GetPost)
-	r.PUT("/posts/:id", a.PutPost)
-	r.DELETE("/posts/:id", a.DeletePost)
-	//platforms
-	r.POST("/platforms", a.CreatePlatform)
-	r.GET("/platforms", a.GetPlatforms)
-	r.GET("/platforms/:id", a.GetPlatform)
-	r.PUT("/platforms/:id", a.PutPlatform)
-	r.DELETE("/platforms/:id", a.DeletePlatform)
-	//auth
-	r.GET("/auth/:provider/callback", a.getAuthCallbackFunction)
-	r.GET("/auth/:provider", a.beginAuthFunction)
+	authGroup := r.Group("/auth")
+	{
+		authGroup.GET("/:provider", a.beginAuthFunction)
+		authGroup.GET("/:provider/callback", a.getAuthCallbackFunction)
+		authGroup.POST("/refresh", a.refreshTokensHandler)
+	}
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler)) //http://localhost:8080/swagger/index.html
+	api := r.Group("/")
+	api.Use(a.AuthMiddleware())
+	{
+		// posts
+		api.POST("/posts", a.CreatePost)
+		api.GET("/posts", a.GetPosts)
+		api.GET("/posts/:id", a.GetPost)
+		api.PUT("/posts/:id", a.PutPost)
+		api.DELETE("/posts/:id", a.DeletePost)
+
+		// platforms
+		api.POST("/platforms", a.CreatePlatform)
+		api.GET("/platforms", a.GetPlatforms)
+		api.GET("/platforms/:id", a.GetPlatform)
+		api.PUT("/platforms/:id", a.PutPlatform)
+		api.DELETE("/platforms/:id", a.DeletePlatform)
+	}
 	//not found
 	r.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -47,13 +62,33 @@ func (a *App) Routes(r *gin.Engine) {
 			"method":  c.Request.Method,
 		})
 	})
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler)) //http://localhost:8080/swagger/index.html
 }
 
 // Валидация
 func validate(req interface{}) error {
 	validate := validator.New()
 	return validate.Struct(req)
+}
+
+func (a *App) AuthMiddleware() gin.HandlerFunc {
+	return func(rw *gin.Context) {
+		authHeader := rw.GetHeader("Authorization")
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			rw.AbortWithStatusJSON(401, gin.H{"error": "Unauthorized"})
+			return
+		}
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		claims := &auth.MyClaims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("JWT_ACCESS_SECRET")), nil
+		})
+		if err != nil || !token.Valid {
+			rw.AbortWithStatusJSON(401, gin.H{"error": "Invalid token"})
+			return
+		}
+		rw.Set("currentUserID", claims.UserID)
+		rw.Next()
+	}
 }
 
 // CreatePost godoc
@@ -69,7 +104,14 @@ func validate(req interface{}) error {
 // @Failure      500  {object}  dto.ErrorResponse
 // @Router       /posts [post]
 func (a *App) CreatePost(rw *gin.Context) {
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
 	var request dto.CreatePostRequest
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -79,6 +121,7 @@ func (a *App) CreatePost(rw *gin.Context) {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	request.Sheduled_for = request.Sheduled_for.Add(-3 * time.Hour)
 	request.Status = "scheduled"
 	var responce dto.CreatePostResponce
 	responce.ID_post, responce.Created_at, err = a.Repo.CreatePost(a.Ctx, request)
@@ -104,6 +147,13 @@ func (a *App) CreatePost(rw *gin.Context) {
 // @Router       /posts [get]
 func (a *App) GetPosts(rw *gin.Context) {
 	var request dto.GetByUserIDRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -142,6 +192,13 @@ func (a *App) GetPost(rw *gin.Context) {
 		return
 	}
 	var request dto.GetByUserIDRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	if err := rw.ShouldBindJSON(&request); err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -176,6 +233,13 @@ func (a *App) PutPost(rw *gin.Context) {
 		return
 	}
 	var request dto.PutPostRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -223,6 +287,13 @@ func (a *App) DeletePost(rw *gin.Context) {
 		return
 	}
 	var request dto.GetByUserIDRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -259,6 +330,9 @@ func (a *App) DeletePost(rw *gin.Context) {
 // @Router       /platforms [post]
 func (a *App) CreatePlatform(rw *gin.Context) {
 	var request dto.CreatePlatformRequest
+	val, _ := rw.Get("currentUserID")
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -292,6 +366,13 @@ func (a *App) CreatePlatform(rw *gin.Context) {
 // @Router       /platforms [get]
 func (a *App) GetPlatforms(rw *gin.Context) {
 	var request dto.GetByUserIDRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -330,6 +411,13 @@ func (a *App) GetPlatform(rw *gin.Context) {
 		return
 	}
 	var request dto.GetByUserIDRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -368,6 +456,13 @@ func (a *App) PutPlatform(rw *gin.Context) {
 		return
 	}
 	var request dto.PutPlatformRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -416,6 +511,13 @@ func (a *App) DeletePlatform(rw *gin.Context) {
 		return
 	}
 	var request dto.GetByUserIDRequest
+	val, exists := rw.Get("currentUserID")
+	if !exists {
+		rw.JSON(500, gin.H{"error": "User not found"})
+		return
+	}
+	userID := val.(string)
+	request.ID_user = userID
 	err := rw.ShouldBindJSON(&request)
 	if err != nil {
 		rw.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -443,14 +545,13 @@ func (a *App) getAuthCallbackFunction(rw *gin.Context) {
 	req := rw.Request.WithContext(context.WithValue(rw.Request.Context(), "provider", provider))
 	user, err := gothic.CompleteUserAuth(rw.Writer, req)
 	if err != nil {
-		log.Printf("Error in auth: %v", err)
-		rw.AbortWithStatus(http.StatusUnauthorized)
+		rw.AbortWithStatusJSON(401, gin.H{"error": "Google Auth failed"})
 		return
 	}
-	rw.JSON(http.StatusOK, gin.H{
-		"id":    user.UserID,
-		"email": user.Email,
-		"name":  user.Name,
+	accessToken, refreshToken, _ := auth.GenerateTokens(user.UserID)
+	rw.SetCookie("refresh_token", refreshToken, 3600*24*30, "/auth/refresh", "", true, true)
+	rw.JSON(200, gin.H{
+		"access_token": accessToken,
 	})
 }
 
@@ -458,4 +559,38 @@ func (a *App) beginAuthFunction(rw *gin.Context) {
 	provider := rw.Param("provider")
 	req := rw.Request.WithContext(context.WithValue(rw.Request.Context(), "provider", provider))
 	gothic.BeginAuthHandler(rw.Writer, req)
+}
+
+func (a *App) refreshTokensHandler(rw *gin.Context) {
+	cookie, err := rw.Cookie("refresh_token")
+	if err != nil {
+		rw.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "session expired"})
+		return
+	}
+	token, err := jwt.Parse(cookie, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+
+		}
+		return []byte(os.Getenv("JWT_REFRESH_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		rw.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "not valid refresh token"})
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		rw.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	userID := claims["sub"].(string)
+	newAccessToken, newRefreshToken, err := auth.GenerateTokens(userID)
+	if err != nil {
+		rw.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+	rw.SetCookie("refresh_token", newRefreshToken, 3600*24*30, "/auth/refresh", "", true, true)
+	rw.JSON(http.StatusOK, gin.H{
+		"access_token": newAccessToken,
+	})
 }

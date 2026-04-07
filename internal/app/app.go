@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -128,18 +127,13 @@ func (a *App) proccesProcessing(msg kf.Message) {
 		log.Print(err)
 		return
 	}
-	user_id, err1 := strconv.Atoi(msg1.UserID)
-	if err1 != nil {
-		log.Print(err1)
-		return
-	}
 	message, err3 := a.Repo.GetTitleANDContent(a.Ctx, msg1.PostID)
 	if err3 != nil {
 		log.Print(err3)
 		return
 	}
 	text := message.Title + "\n" + message.Content
-	platformTG, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "Telegram", user_id)
+	platformTG, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "Telegram", msg1.UserID)
 	if err2 != nil {
 		log.Print(err2)
 	} else {
@@ -153,7 +147,7 @@ func (a *App) proccesProcessing(msg kf.Message) {
 			}
 		}
 	}
-	platformVK, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "VK", user_id)
+	platformVK, err2 := a.Repo.GetPlatformsByUserID(a.Ctx, "VK", msg1.UserID)
 	if err2 != nil {
 		log.Print(err2)
 	} else {
