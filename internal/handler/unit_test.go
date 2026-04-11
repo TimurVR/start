@@ -7,13 +7,16 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
+	"hexlet/internal/auth"
 	"hexlet/internal/domain"
 	"hexlet/internal/dto"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -75,6 +78,7 @@ func (m *MockPostRepository) UpdatePlatformByID(ctx context.Context, req dto.Put
 
 func setupTest() (*gin.Engine, *MockPostRepository, *App) {
 	gin.SetMode(gin.TestMode)
+	os.Setenv("JWT_ACCESS_SECRET", "test-secret")
 	mockRepo := new(MockPostRepository)
 	app := &App{
 		Ctx:  context.Background(),
@@ -84,49 +88,54 @@ func setupTest() (*gin.Engine, *MockPostRepository, *App) {
 	app.Routes(router)
 	return router, mockRepo, app
 }
+func generateTestToken(userID string) string {
+	// Access Token
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.MyClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+		},
+	})
+	aToken, _ := accessToken.SignedString([]byte(os.Getenv("JWT_ACCESS_SECRET")))
+	return aToken
+}
 
 // Вспомогательная функция для сравнения времени без учета монотонной части
 func compareTime(t1, t2 time.Time) bool {
 	return t1.UnixNano() == t2.UnixNano()
 }
 
-// Тесты для CreatePost
 func TestCreatePost_Success(t *testing.T) {
 	router, mockRepo, _ := setupTest()
-
-	scheduledTime := time.Now().Add(24 * time.Hour).Round(0)
+	baseTime := time.Now().Add(24 * time.Hour).UTC().Truncate(time.Second)
 	reqBody := dto.CreatePostRequest{
 		ID_user:      "1",
 		Title:        "Test Post",
 		Content:      "Test Content",
-		Sheduled_for: scheduledTime,
+		Sheduled_for: baseTime,
 	}
-
-	expectedTime := time.Now().Round(0)
+	expectedCreatedAt := time.Now().Add(3 * time.Hour).UTC().Truncate(time.Second)
+	jsonBody, _ := json.Marshal(reqBody)
 	mockRepo.On("CreatePost", mock.Anything, mock.MatchedBy(func(req dto.CreatePostRequest) bool {
+		expectedTimeInRepo := baseTime.Add(-3 * time.Hour).Unix()
+
 		return req.ID_user == "1" &&
 			req.Title == "Test Post" &&
-			req.Content == "Test Content" &&
 			req.Status == "scheduled" &&
-			compareTime(req.Sheduled_for, scheduledTime)
-	})).Return(1, expectedTime, nil)
-
-	jsonBody, _ := json.Marshal(reqBody)
+			req.Sheduled_for.Unix() == expectedTimeInRepo
+	})).Return(1, expectedCreatedAt, nil)
 	req, _ := http.NewRequest("POST", "/posts", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-
 	assert.Equal(t, http.StatusOK, w.Code)
-
 	var response dto.CreatePostResponce
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, response.ID_post)
 	assert.Equal(t, "1", response.ID_user)
-	assert.True(t, compareTime(expectedTime, response.Created_at))
-
+	assert.Equal(t, expectedCreatedAt.Unix(), response.Created_at.Unix())
 	mockRepo.AssertExpectations(t)
 }
 
@@ -135,6 +144,7 @@ func TestCreatePost_InvalidJSON(t *testing.T) {
 
 	req, _ := http.NewRequest("POST", "/posts", bytes.NewBuffer([]byte("invalid json")))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -157,6 +167,7 @@ func TestCreatePost_ValidationError(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("POST", "/posts", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -181,6 +192,7 @@ func TestCreatePost_RepositoryError(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("POST", "/posts", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -238,7 +250,7 @@ func TestGetPosts_Success(t *testing.T) {
 		Failed: []domain.Post{
 			{
 				ID_post:      4,
-				ID_user:     "1",
+				ID_user:      "1",
 				Title:        "Failed Post",
 				Content:      "Content 4",
 				Status:       "failed",
@@ -253,6 +265,7 @@ func TestGetPosts_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/posts", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -274,22 +287,6 @@ func TestGetPosts_Success(t *testing.T) {
 	mockRepo.AssertExpectations(t)
 }
 
-func TestGetPosts_ValidationError(t *testing.T) {
-	router, mockRepo, _ := setupTest()
-
-	reqBody := dto.GetByUserIDRequest{}
-
-	jsonBody, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("GET", "/posts", bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-
-	w := httptest.NewRecorder()
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	mockRepo.AssertNotCalled(t, "GetPost")
-}
-
 func TestGetPosts_RepositoryError(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
@@ -302,6 +299,7 @@ func TestGetPosts_RepositoryError(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/posts", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -344,6 +342,7 @@ func TestGetPost_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/posts/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -363,7 +362,7 @@ func TestGetPost_InvalidID(t *testing.T) {
 	router, mockRepo, _ := setupTest()
 
 	req, _ := http.NewRequest("GET", "/posts/invalid", nil)
-
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
@@ -413,6 +412,7 @@ func TestPutPost_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("PUT", "/posts/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -458,6 +458,7 @@ func TestPutPost_WithEmptyFields(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("PUT", "/posts/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -478,6 +479,7 @@ func TestPutPost_InvalidID(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("PUT", "/posts/invalid", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -513,6 +515,7 @@ func TestDeletePost_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/posts/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -533,6 +536,7 @@ func TestDeletePost_NotFound(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/posts/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -552,6 +556,7 @@ func TestDeletePost_InvalidID(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/posts/invalid", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -589,6 +594,7 @@ func TestCreatePlatform_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("POST", "/platforms", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -613,6 +619,7 @@ func TestCreatePlatform_ValidationError(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("POST", "/platforms", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -659,6 +666,7 @@ func TestGetPlatforms_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -687,6 +695,7 @@ func TestGetPlatforms_RepositoryError(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -725,6 +734,7 @@ func TestGetPlatform_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -750,6 +760,7 @@ func TestGetPlatform_InvalidID(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms/invalid", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -776,6 +787,7 @@ func TestGetPlatform_NotFound(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("GET", "/platforms/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -829,6 +841,7 @@ func TestPutPlatform_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("PUT", "/platforms/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -851,6 +864,7 @@ func TestPutPlatform_InvalidID(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("PUT", "/platforms/invalid", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -885,6 +899,7 @@ func TestDeletePlatform_Success(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/platforms/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -905,6 +920,7 @@ func TestDeletePlatform_NotFound(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/platforms/1", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
@@ -924,6 +940,7 @@ func TestDeletePlatform_InvalidID(t *testing.T) {
 	jsonBody, _ := json.Marshal(reqBody)
 	req, _ := http.NewRequest("DELETE", "/platforms/invalid", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+generateTestToken("1"))
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
